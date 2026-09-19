@@ -1,6 +1,6 @@
 # Wobbleheads
 
-An interactive Wobbleheads site built around the 3,333 SVGs in `../images`.
+An interactive Wobbleheads site built around the 3,333 SVGs in `images`.
 
 ## Local development
 

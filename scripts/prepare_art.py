@@ -5,8 +5,8 @@ import re
 import shutil
 import xml.etree.ElementTree as ET
 
-ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / "site" / "public" / "images"
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "public" / "images"
 LAYERS = ("Background", "Face", "Hair", "Eyes", "Nose", "Mouth", "Extra")
 SOURCES = (1, 6, 17, 204, 317, 445, 1031, 1240, 1367, 1870, 2327, 3094)
 SOURCE_TRAITS = {
