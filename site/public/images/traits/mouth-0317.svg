@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="600" height="600"><defs><filter id="sk2"><feTurbulence type="fractalNoise" baseFrequency="0.03 0.015" numOctaves="3" seed="14" result="n" /><feDisplacementMap in="SourceGraphic" in2="n" scale="3.8" /></filter></defs><g id="Mouth" filter="url(#sk2)"><path d="M 71.03999999999999 102.4 Q 82.24 104.64 89.856 99.712" fill="none" stroke="#3a2f22" stroke-width="1.5" /></g></svg>

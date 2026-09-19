@@ -1,0 +1,52 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { TASK_KEYS, XP } from '@/lib/site-config';
+import '../dashboard.css';
+
+type Person = { id: string; display_name: string; email: string; x_username: string | null; wallet: string | null; xp: number; badge: string | null; wl_status: string; wl_category: string | null; suspicious: number };
+type Submission = { id: string; display_name: string; task_key: string; content: string; status: string; participant_id: string; note: string | null };
+type Referral = { referred_id: string; referrer_id: string; status: string };
+type Data = { participants: Person[]; submissions: Submission[]; referrals: Referral[]; settings: { key: string; value: string }[] };
+type History = { events: { event_key: string; xp: number; created_at: string }[]; submissions: { task_key: string; status: string }[] };
+const categories = ['Guaranteed WL', 'Raffle WL', 'Community WL'];
+
+export default function AdminPanel() {
+  const [data, setData] = useState<Data | null>(null);
+  const [search, setSearch] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
+  const [settingInputs, setSettingInputs] = useState<Record<string, string>>({});
+  const [histories, setHistories] = useState<Record<string, History>>({});
+  const refresh = useCallback(async (q = '') => {
+    const response = await fetch(`/api/admin?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
+    const body = await response.json() as Data & { error?: string };
+    if (response.ok) { setData(body); setSettingInputs(Object.fromEntries(body.settings.map((entry: { key: string; value: string }) => [entry.key, entry.value]))); }
+    else setMessage(body.error || 'Could not load admin data.');
+  }, []);
+  useEffect(() => { queueMicrotask(() => void refresh()); }, [refresh]);
+  const update = async (payload: Record<string, unknown>) => {
+    setBusy(true);
+    try {
+      const response = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const body = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(body.error || 'Action failed.');
+      setMessage('Saved.'); await refresh(search);
+    } catch (cause) { setMessage(cause instanceof Error ? cause.message : 'Action failed.'); }
+    finally { setBusy(false); }
+  };
+  const value = (key: string) => settingInputs[key] || '';
+  const loadHistory = async (id: string) => {
+    if (histories[id]) return;
+    const response = await fetch(`/api/admin?history=${encodeURIComponent(id)}`);
+    if (response.ok) setHistories({ ...histories, [id]: await response.json() as History });
+  };
+  return <main className="dashboard"><header><Link href="/">← Wobbleheads</Link><div><span>PRIVATE CONTROL ROOM</span><h1>Wobbleheads admin</h1></div><Link href="/results">View results ↗</Link></header><div className="dash-summary"><div><strong>{data?.participants.length ?? '—'}</strong><span>Recent participants</span></div><div><strong>{data?.submissions.filter((item) => item.status === 'pending').length ?? '—'}</strong><span>Pending reviews</span></div><div><strong>{data?.participants.filter((item) => item.wl_status === 'approved').length ?? '—'}</strong><span>Approved winners</span></div></div>{message && <output className="dash-message">{message} <button onClick={() => setMessage('')} aria-label="Dismiss">×</button></output>}
+    <section><div className="dash-section-head"><h2>Participants</h2><form onSubmit={(event) => { event.preventDefault(); void refresh(search); }}><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ID, name, email, wallet" aria-label="Search participants"/><button>Search</button></form></div><div className="dash-table-wrap"><table><thead><tr><th>Name / ID</th><th>Contact</th><th>XP</th><th>WL</th><th>Review</th></tr></thead><tbody>{data?.participants.map((person) => <tr key={person.id}><td><strong>{person.display_name}</strong><small>{person.id}</small>{person.suspicious ? <em>Flagged</em> : null}</td><td><small>{person.email}</small><small>{person.x_username ? `@${person.x_username}` : 'No X username'}</small><small>{person.wallet || 'No wallet'}</small></td><td><strong>{person.xp}</strong><button disabled={busy} onClick={() => { const amount = Number(prompt('Adjust XP by (negative to remove):')); if (amount) void update({ action: 'xp', id: person.id, amount }); }}>Adjust</button></td><td><strong>{person.wl_status}</strong><small>{person.wl_category || '—'}</small><select value={selectedCategory[person.id] || 'Guaranteed WL'} onChange={(event) => setSelectedCategory({ ...selectedCategory, [person.id]: event.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select><div className="dash-actions"><button disabled={busy || !person.wallet} onClick={() => update({ action: 'wl', id: person.id, status: 'approved', category: selectedCategory[person.id] || categories[0] })}>Approve</button><button disabled={busy} onClick={() => update({ action: 'wl', id: person.id, status: 'rejected' })}>Reject</button></div></td><td><button disabled={busy} onClick={() => update({ action: 'suspicious', id: person.id, flag: !person.suspicious })}>{person.suspicious ? 'Clear flag' : 'Flag activity'}</button><details><summary onClick={() => void loadHistory(person.id)}>Task history</summary>{histories[person.id] ? <div className="history-list">{histories[person.id].events.map((event, index) => <p key={index}>{event.event_key}: {event.xp >= 0 ? "+" : ""}{event.xp} XP</p>)}{histories[person.id].submissions.map((entry, index) => <p key={`s-${index}`}>{entry.task_key}: {entry.status}</p>)}</div> : <p>Loading…</p>}</details></td></tr>)}</tbody></table></div>{!data?.participants.length && <p>No participants found.</p>}</section>
+    <section><h2>Task submissions</h2><div className="dash-table-wrap"><table><thead><tr><th>Participant</th><th>Task</th><th>Proof</th><th>Status</th><th>Decision</th></tr></thead><tbody>{data?.submissions.map((item) => <tr key={item.id}><td>{item.display_name}<small>{item.participant_id}</small></td><td>{item.task_key}</td><td><span className="proof">{item.content}</span></td><td>{item.status}<small>{item.note}</small></td><td>{item.status === 'pending' && <div className="dash-actions"><button disabled={busy} onClick={() => update({ action: 'review', id: item.id, status: 'approved' })}>Approve</button><button disabled={busy} onClick={() => update({ action: 'review', id: item.id, status: 'rejected' })}>Reject</button></div>}</td></tr>)}</tbody></table></div>{!data?.submissions.length && <p>No submissions yet.</p>}</section>
+    <section><h2>Referrals</h2><div className="dash-table-wrap"><table><thead><tr><th>Referrer</th><th>Referred</th><th>Status</th><th>Decision</th></tr></thead><tbody>{data?.referrals.map((item) => <tr key={item.referred_id}><td>{item.referrer_id}</td><td>{item.referred_id}</td><td>{item.status}</td><td>{item.status === 'pending' && <div className="dash-actions"><button disabled={busy} onClick={() => update({ action: 'referral', id: item.referred_id, status: 'approved' })}>Approve</button><button disabled={busy} onClick={() => update({ action: 'referral', id: item.referred_id, status: 'rejected' })}>Reject</button></div>}</td></tr>)}</tbody></table></div></section>
+    <section><h2>Settings & publication</h2><div className="settings-grid">{[{ key: 'xUrl', title: 'Official X URL' }, { key: 'discordUrl', title: 'Official Discord URL' }, { key: 'wlThreshold', title: 'WL XP threshold' }, { key: 'mintDate', title: 'Mint date (YYYY-MM-DD)' }, { key: 'mintPrice', title: 'Mint price' }, { key: 'contractAddress', title: 'Contract address' }].map((item) => <label key={item.key}>{item.title}<div><input value={value(item.key)} onChange={(event) => setSettingInputs({ ...settingInputs, [item.key]: event.target.value })}/><button disabled={busy} onClick={() => update({ action: 'setting', key: item.key, value: value(item.key) })}>Save</button></div></label>)}<label>Blockchain<div><select value={value('blockchain') || 'evm'} onChange={(event) => setSettingInputs({ ...settingInputs, blockchain: event.target.value })}><option value="evm">EVM</option><option value="solana">Solana</option></select><button disabled={busy} onClick={() => update({ action: 'setting', key: 'blockchain', value: value('blockchain') || 'evm' })}>Save</button></div></label></div><h3>Quest rewards and availability</h3><div className="settings-grid">{Object.keys(XP).map((key) => <label key={key}>{key} XP<div><input type="number" min="0" max="100" value={settingInputs[`reward.${key}`] ?? XP[key as keyof typeof XP]} onChange={(event) => setSettingInputs({ ...settingInputs, [`reward.${key}`]: event.target.value })}/><button disabled={busy} onClick={() => update({ action: "setting", key: `reward.${key}`, value: settingInputs[`reward.${key}`] ?? XP[key as keyof typeof XP] })}>Save</button></div></label>)}{TASK_KEYS.map((key) => <label key={key}>{key} availability<div><select value={settingInputs[`task.${key}`] ?? "true"} onChange={(event) => setSettingInputs({ ...settingInputs, [`task.${key}`]: event.target.value })}><option value="true">Open</option><option value="false">Paused</option></select><button disabled={busy} onClick={() => update({ action: "setting", key: `task.${key}`, value: settingInputs[`task.${key}`] ?? "true" })}>Save</button></div></label>)}</div><div className="publish-controls"><button disabled={busy} onClick={() => update({ action: 'setting', key: 'leaderboardLocked', value: value('leaderboardLocked') === 'true' ? 'false' : 'true' })}>{value('leaderboardLocked') === 'true' ? 'Unlock' : 'Lock'} leaderboard</button><button disabled={busy} onClick={() => update({ action: 'setting', key: 'resultsPublished', value: value('resultsPublished') === 'true' ? 'false' : 'true' })}>{value('resultsPublished') === 'true' ? 'Unpublish' : 'Publish'} WL results</button><button type="button" onClick={() => { window.location.href = "/api/admin?export=winners"; }}>Export winners CSV</button><button type="button" onClick={() => { window.location.href = "/api/admin?export=wallets"; }}>Export wallets CSV</button></div></section>
+  </main>;
+}

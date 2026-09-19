@@ -1,0 +1,10 @@
+.DS_Store
+site/node_modules/
+site/.next/
+site/dist/
+site/.wrangler/
+site/tsconfig.tsbuildinfo
+site/.env*
+site/*.log
+__pycache__/
+*.py[cod]
