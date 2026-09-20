@@ -509,6 +509,54 @@ button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255
   }
 }
 
+
+/* ==========================================================
+   PHONE LANDSCAPE ONLY — desktop and tablets are untouched
+   ========================================================== */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 960px) {
+  .rewardbar{display:none!important}
+
+  /* Completely remove the remaining dark lower-screen overlay. */
+  #sceneShade{display:none!important}
+
+  /* Lighter decorative work for smoother phone gameplay. */
+  #world2{display:none!important}
+  #groundFlow{opacity:.10!important}
+  .speedveil.fast{opacity:.14!important}
+
+  /* The player already knows to tap; keep the actual play area clean. */
+  #jumpHint{display:none!important}
+
+  /* Keep the FCFS/GTD timing visible at the top instead of a bottom radar. */
+  .labels{
+    display:flex!important;
+    position:absolute!important;
+    z-index:22!important;
+    top:calc(8px + env(safe-area-inset-top))!important;
+    left:50%!important;
+    width:min(280px,42vw)!important;
+    transform:translateX(-50%)!important;
+    justify-content:center!important;
+    gap:12px!important;
+    margin:0!important;
+    padding:5px 9px!important;
+    border-radius:999px!important;
+    background:rgba(15,14,12,.56)!important;
+    border:1px solid rgba(255,255,255,.09)!important;
+    backdrop-filter:blur(7px)!important;
+    font-size:7px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    pointer-events:none!important;
+  }
+  .labels span:first-child{display:none!important}
+  .labels span:nth-child(2){transform:none!important}
+  .labels span:nth-child(2){transform:none!important;font-size:7px!important}
+  .labels span:nth-child(3){font-size:7px!important}
+
+  #message{top:calc(43px + env(safe-area-inset-top))!important}
+}
+
 </style>
 </head>
 <body>
@@ -640,22 +688,31 @@ let running=false, last=0, start=0, elapsed=0, raf=0;
 let speed=520, entities=[], particles=[];
 let jumpY=0, vy=0, onGround=true, rotation=0, spawnTimer=0, coinTimer=0, dustSpawn=0;
 let coins=0, bgScroll=0, jumpBuffer=0, tripleBoostUntil=0, tripleBoostAmount=0;
+let tripleGroupSeq=0, mobileClearedTripleGroups=new Set();
 
 let PA={x:.09,y:.27}, PB={x:.94,y:.84}; let playerXFrac=.245;
+
 let gravity=4000, jumpPower=1580;
+
+function isPhoneLandscapeViewport(){
+  const shortSide=Math.min(W,H);
+  const longSide=Math.max(W,H);
+  return W>H && shortSide<=500 && longSide<=960;
+}
+
 
 // line of slope on scene
 function resize(){
   W=innerWidth;
   H=innerHeight;
 
-  const compactViewport = Math.min(W,H) <= 520;
+  const compactViewport = isPhoneLandscapeViewport();
   gravity = compactViewport ? 3450 : 4000;
 
   // Mobile landscape needs more airborne carry for compact combo waves.
   // Desktop physics remain unchanged.
   jumpPower = compactViewport
-    ? Math.sqrt(2 * gravity * Math.min(W,H) * .38)
+    ? Math.sqrt(2 * gravity * Math.min(W,H) * .43)
     : 1580;
 
   const ratio=W/Math.max(H,1);
@@ -736,9 +793,9 @@ function addEntity(kind,x,raise=0,type=""){
   if(type==="barrel") spec={w:82,h:104,hx:12,hy:23,hw:55,hh:57,groundInset:3,tilt:0};
   if(type==="spike") spec={w:148,h:93,hx:17,hy:31,hw:113,hh:42,groundInset:2,tilt:-2};
 
-  const compactViewport = Math.min(W,H) <= 520;
+  const compactViewport = isPhoneLandscapeViewport();
   const adjustedRaise = kind === "coin" && compactViewport
-    ? Math.max(raise * .62, 84)
+    ? Math.max(raise * .68, 96)
     : raise;
   const e={kind,type,el,x,raise:adjustedRaise,...spec,collected:false,passed:false,spin:rand(-8,8)};
   entities.push(e);
@@ -776,7 +833,7 @@ function addSinglePattern(x){
 function addDoublePattern(x, tighter=false){
   const order=shuffle(["spike","crate","barrel"]).slice(0,2);
 
-  const compactViewport = Math.min(W,H) <= 520;
+  const compactViewport = isPhoneLandscapeViewport();
   const gap=compactViewport
     ? clamp(108 + (speed-700)*0.025 + (tighter?0:7), 104, 132)
     : clamp(150 + (speed-700)*0.04 + (tighter?0:12), 145, 205);
@@ -793,25 +850,27 @@ function addTriplePattern(x, pressure=false){
   const order=shuffle(["spike","crate","barrel"]);
 
   // Compact enough to clear in one committed long jump.
-  const compactViewport = Math.min(W,H) <= 520;
+  const compactViewport = isPhoneLandscapeViewport();
   const speedAdjust=clamp((speed-700)*(compactViewport ? 0.018 : 0.035),0,compactViewport ? 10 : 22);
 
   const gap1=compactViewport
-    ? (pressure ? 98 : 106) + speedAdjust
+    ? (pressure ? 96 : 104) + speedAdjust
     : (pressure ? 148 : 158) + speedAdjust;
 
   const gap2=compactViewport
-    ? (pressure ? 104 : 112) + speedAdjust
+    ? (pressure ? 102 : 110) + speedAdjust
     : (pressure ? 154 : 166) + speedAdjust;
 
+  const groupId=++tripleGroupSeq;
   const a=addEntity("obstacle",x,0,order[0]);
   const b=addEntity("obstacle",x+gap1,0,order[1]);
   const c=addEntity("obstacle",x+gap1+gap2,0,order[2]);
 
-  // Mark these so collision handling can recognize one triple group.
-  a.combo="triple";
-  b.combo="triple";
-  c.combo="triple";
+  // Mark these so collision handling recognizes them as ONE triple challenge.
+  for(const item of [a,b,c]){
+    item.combo="triple";
+    item.comboGroup=groupId;
+  }
 
   // One high arc shows the intended solution: one long jump.
   const totalSpan=gap1+gap2;
@@ -822,17 +881,20 @@ function addTriplePattern(x, pressure=false){
 
 
 function triggerTripleSpeedBoost(){
-  // Mobile needs a little more horizontal carry because the playable
-  // landscape area is compressed. Desktop boost remains unchanged.
-  const compactViewport = Math.min(W,H) <= 520;
+  const compactViewport = isPhoneLandscapeViewport();
 
-  tripleBoostAmount = compactViewport
-    ? clamp(speed * .32, 220, 320)
-    : clamp(speed * .25, 185, 275);
+  // Phones no longer receive the sudden speed spike. The triple is made
+  // fair through jump geometry and combo clearance instead, avoiding the
+  // visible "glitch" when the wave appears.
+  if(compactViewport){
+    tripleBoostAmount=0;
+    tripleBoostUntil=elapsed;
+  }else{
+    tripleBoostAmount=clamp(speed * .25,185,275);
+    tripleBoostUntil=elapsed+3.2;
+  }
 
-  tripleBoostUntil = elapsed + (compactViewport ? 3.45 : 3.2);
-
-  announce("SPEED UP — LONG JUMP!");
+  announce(compactViewport ? "LONG JUMP — CLEAR ALL 3!" : "SPEED UP — LONG JUMP!");
 }
 
 function spawnPattern(){
@@ -919,7 +981,7 @@ function reset(){
   particles.forEach(p=>p.el.remove());
   entities=[]; particles=[];
   elapsed=0; speed=520; coins=0; jumpY=0; vy=0; onGround=true; rotation=0;
-  spawnTimer=1.05; coinTimer=.72; dustSpawn=0; bgScroll=0; jumpBuffer=0; tripleBoostUntil=0; tripleBoostAmount=0;
+  spawnTimer=1.05; coinTimer=.72; dustSpawn=0; bgScroll=0; jumpBuffer=0; tripleBoostUntil=0; tripleBoostAmount=0; tripleGroupSeq=0; mobileClearedTripleGroups.clear();
   timeEl.textContent="0.0"; coinsEl.textContent="0"; if(radarFill) radarFill.style.width="0%"; if(radarNeedle) radarNeedle.style.left="0%"; if(radarTime) radarTime.textContent="0.0";
   coinGoal.classList.remove("good");
   speedveil.classList.remove("fast");
@@ -935,7 +997,7 @@ function updateBackground(dt){
 }
 
 function spawnDust(x, y){
-  const count = speed>1100 ? 2 : 1;
+  const count = isPhoneLandscapeViewport() ? 1 : (speed>1100 ? 2 : 1);
   for(let i=0;i<count;i++){
     const el=document.createElement("div");
     el.className="dustP";
@@ -1012,7 +1074,7 @@ function updateRunner(dt){
 
   const x = playerXFrac * W;
   const g = groundY(x);
-  const compactViewport = Math.min(W,H) <= 520;
+  const compactViewport = isPhoneLandscapeViewport();
   const size = compactViewport ? clamp(Math.min(W,H) * .115, 36, 50) : clamp(W * 0.105, 62, 92);
   const left = x - size*.5;
   const bottom = H - g + jumpY - size*.49;
@@ -1033,7 +1095,7 @@ function updateRunner(dt){
     dustSpawn -= dt;
     if(dustSpawn<=0){
       spawnDust(left+8, H-g-2);
-      dustSpawn = speed>1200 ? 0.018 : 0.032;
+      dustSpawn = isPhoneLandscapeViewport() ? 0.052 : (speed>1200 ? 0.018 : 0.032);
     }
   }
 
@@ -1056,7 +1118,7 @@ function updateEntities(dt, pr){
     const e=entities[i];
     e.x -= speed * dt;
 
-    const compactViewport = Math.min(W,H) <= 520;
+    const compactViewport = isPhoneLandscapeViewport();
     let scale = clamp(.82 + (e.x/W)*.21, .76, 1.08) * (compactViewport ? clamp(Math.min(W,H) / 680, .52, .72) : 1);
     if(e.kind==="coin") scale *= .92;
 
@@ -1108,19 +1170,23 @@ function updateEntities(dt, pr){
     }else{
       if(overlap(pr,hb)){
         if(e.combo==="triple"){
-          // Once the player has reached a genuine jump height, treat the
-          // triple as one long-jump challenge instead of three separate
-          // invisible collision walls.
-          const compactViewport = Math.min(W,H) <= 520;
+          const compactViewport=isPhoneLandscapeViewport();
 
-          // On mobile, the character is visually smaller and the road is
-          // compressed. Once a properly timed jump is clearly airborne,
-          // let the player carry across the triple as one long-jump challenge.
-          const tripleClearHeight = compactViewport
-            ? clamp(Math.min(W,H) * .13, 44, 58)
+          if(compactViewport && e.comboGroup && mobileClearedTripleGroups.has(e.comboGroup)){
+            continue;
+          }
+
+          // A good mobile jump only needs to clear the FIRST collision point.
+          // After that, all three hazards in that exact group are cleared as
+          // one committed long jump. Late/low jumps still crash.
+          const tripleClearHeight=compactViewport
+            ? clamp(Math.min(W,H)*.095,32,40)
             : 82;
 
-          if(jumpY >= tripleClearHeight){
+          if(jumpY>=tripleClearHeight){
+            if(compactViewport && e.comboGroup){
+              mobileClearedTripleGroups.add(e.comboGroup);
+            }
             continue;
           }
         }
@@ -1212,16 +1278,28 @@ function loop(ts){
   const coinGap = clamp(1.44-elapsed*.0045, .82, 1.44);
 
   if(spawnTimer<=0){
-    const sequenceSpan=spawnPattern();
+    const phoneViewport=isPhoneLandscapeViewport();
+    const activePhoneObstacles=phoneViewport
+      ? entities.filter(e=>e.kind==="obstacle" && e.x>-180).length
+      : 0;
 
-    // Prevent the next pattern from overlapping the current sequence.
-    // This is what previously created accidental 4-obstacle clusters.
-    const clearanceBuffer=clamp(speed * 0.52 + 220, 560, 880);
-    const sequenceClearTime=(sequenceSpan + clearanceBuffer) / Math.max(speed,1);
-    spawnTimer=Math.max(
-      obstacleGap * rand(.92,1.08),
-      sequenceClearTime
-    );
+    if(phoneViewport && activePhoneObstacles>0){
+      // Wait until the current wave has fully passed before creating another.
+      // This guarantees a phone player never sees accidental 4–5 obstacle walls.
+      spawnTimer=.10;
+    }else{
+      const sequenceSpan=spawnPattern();
+
+      const clearanceBuffer=phoneViewport
+        ? clamp(speed*.34+150,360,520)
+        : clamp(speed*.52+220,560,880);
+
+      const sequenceClearTime=(sequenceSpan+clearanceBuffer)/Math.max(speed,1);
+      spawnTimer=Math.max(
+        obstacleGap*rand(.94,1.06),
+        sequenceClearTime
+      );
+    }
   }
   if(coinTimer<=0){
     if(Math.random()>.42) spawnCoinBonus();
