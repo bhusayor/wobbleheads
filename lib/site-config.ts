@@ -4,6 +4,31 @@ export const XP = {
   joinDiscord: 10, share: 5, referral: 20,
 } as const;
 
+export const GTD_TOTAL = 700;
+export const FCFS_TOTAL = 1500;
+export const TOTAL_GAME_WL = GTD_TOTAL + FCFS_TOTAL;
+
+export type WobbleWLStats = {
+  playersAttempted: number;
+  gtdClaimed: number;
+  fcfsClaimed: number;
+};
+
+export function deriveWobbleWLStats(stats: WobbleWLStats) {
+  const gtdClaimed = Math.max(0, stats.gtdClaimed);
+  const fcfsClaimed = Math.max(0, stats.fcfsClaimed);
+  const totalClaimed = gtdClaimed + fcfsClaimed;
+  return {
+    ...stats,
+    gtdClaimed,
+    fcfsClaimed,
+    gtdRemaining: Math.max(GTD_TOTAL - gtdClaimed, 0),
+    fcfsRemaining: Math.max(FCFS_TOTAL - fcfsClaimed, 0),
+    totalClaimed,
+    totalRemaining: Math.max(TOTAL_GAME_WL - totalClaimed, 0),
+  };
+}
+
 export const LEVELS = [
   { min: 300, name: 'Legendary Wobbler' },
   { min: 150, name: 'Trait Hunter' },

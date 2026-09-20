@@ -127,8 +127,15 @@ export async function POST(request: Request) {
       case 'claim': {
         if (!participant.wallet || !validWallet(participant.wallet, config.blockchain) || !participant.x_username) return error('Add a valid wallet and X username in your profile first.');
         if (participant.xp < config.wlThreshold && participant.badge !== 'Seven Found') return error(`Earn ${config.wlThreshold} XP or find all seven symbols to become eligible.`);
-        await db.prepare("UPDATE participants SET wl_status='pending' WHERE id=? AND wl_status IN ('none','eligible')").bind(participant.id).run();
-        return json({ status: 'pending' });
+        const category = readText(body.category).toLowerCase();
+        if (category !== 'gtd' && category !== 'fcfs') return error('Choose a GTD or FCFS allocation.');
+        const total = category === 'gtd' ? 700 : 1500;
+        const result = await db.prepare(`UPDATE participants SET wl_status='pending',wl_category=? WHERE id=? AND wl_status IN ('none','eligible') AND (SELECT COUNT(*) FROM participants WHERE wl_category=? AND wl_status IN ('pending','approved')) < ?`).bind(category, participant.id, category, total).run();
+        if (!result.meta.changes) {
+          const latest = await db.prepare("SELECT COUNT(*) AS count FROM participants WHERE wl_category=? AND wl_status IN ('pending','approved')").bind(category).first<{ count: number }>();
+          return error(Number(latest?.count || 0) >= total ? `${category.toUpperCase()} allocation is full.` : 'Your WL claim is already being processed.');
+        }
+        return json({ status: 'pending', category });
       }
       case 'referral': {
         const referrer = readText(body.referrer).trim();
