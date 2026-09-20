@@ -306,6 +306,48 @@ button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255
   .orientationPhone{animation:none;transform:rotate(90deg)}
 }
 
+@media (orientation: landscape) and (max-height: 520px){
+  html,body{height:100%;min-height:100%;overflow:hidden}
+  #app{height:100dvh;min-height:100svh}
+  .hud{inset:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) auto calc(8px + env(safe-area-inset-left));gap:7px}
+  .brand{padding:6px 9px;border-radius:11px}
+  .brand img{width:25px;height:25px}
+  .brandTitle{font-size:clamp(13px,2.8vw,18px)}
+  .brandSub{font-size:7px;margin-top:3px}
+  .hudright{gap:6px}
+  .hudcard{min-width:78px;padding:6px 8px;border-radius:11px}
+  .small{font-size:7px;letter-spacing:.1em}
+  .big{font-size:clamp(18px,4vw,25px)}
+  #message{top:calc(53px + env(safe-area-inset-top));font-size:12px;padding:6px 10px}
+  .warning{top:35%;right:5%;font-size:clamp(16px,3vw,24px)}
+  .rewardbar{left:50%;right:auto;bottom:calc(6px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(68vw,700px)}
+  .barbox{padding:7px 10px 6px;border-radius:12px}
+  .radarMeta{font-size:9px;margin-bottom:4px}
+  .radarTrack{height:10px}
+  .radarLabels{font-size:8px;height:14px;margin-top:4px}
+  #radarNeedle{width:14px;height:14px;border-width:2px}
+  #jumpHint{right:calc(8px + env(safe-area-inset-right));bottom:calc(58px + env(safe-area-inset-bottom));font-size:8px;padding:7px 10px}
+  #sound{right:calc(8px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));padding:6px 8px;font-size:8px}
+  .screen{align-items:center;overflow-y:auto;padding:calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left))}
+  .panel{width:min(92vw,900px);max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;padding:clamp(14px,3vh,24px) clamp(18px,3vw,32px);border-radius:20px}
+  .hero{grid-template-columns:minmax(0,1fr) 90px;gap:12px}
+  .hero img{width:82px;justify-self:end}
+  .eyebrow{font-size:8px;letter-spacing:.13em;margin-bottom:5px}
+  h1{font-size:clamp(38px,8vh,58px);line-height:.82}
+  h2{font-size:clamp(34px,8vh,56px);line-height:.82}
+  .lead{font-size:clamp(11px,2.1vh,15px);line-height:1.25;margin:9px 0}
+  .rules{grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0 12px}
+  .rule{padding:8px;font-size:10px;line-height:1.2;border-radius:10px}
+  .rule b{font-size:10px;margin-bottom:3px}
+  button{min-height:38px;padding:8px 13px;font-size:11px}
+  #resultScreen .panel{max-width:620px}
+  #resultScreen .lead{margin:9px 0}
+  #tier{font-size:clamp(20px,5vh,32px);padding:7px 10px;margin-top:6px}
+  .statsrow{gap:7px;margin:10px 0 12px}
+  .statsrow .hudcard{min-width:120px;padding:7px 9px}
+  #resultScreen [style*="display:flex"]{gap:7px!important}
+}
+
 /* Mobile-first presentation: portrait play is supported, with compact safe-area UI. */
 @media (max-width: 767px), (pointer: coarse) and (max-width: 1100px){
   html,body{min-height:100%;height:100%;overflow:hidden}
@@ -489,12 +531,16 @@ let jumpY=0, vy=0, onGround=true, rotation=0, spawnTimer=0, coinTimer=0, dustSpa
 let coins=0, bgScroll=0, jumpBuffer=0, tripleBoostUntil=0, tripleBoostAmount=0;
 
 let PA={x:.09,y:.27}, PB={x:.94,y:.84}; let playerXFrac=.245;
-const gravity=4000, jumpPower=1580;
+let gravity=4000, jumpPower=1580;
 
 // line of slope on scene
 function resize(){
   W=innerWidth;
   H=innerHeight;
+
+  const compactLandscape = W > H && H <= 520;
+  gravity = compactLandscape ? 3600 : 4000;
+  jumpPower = compactLandscape ? Math.sqrt(2 * gravity * H * .24) : 1580;
 
   const ratio=W/Math.max(H,1);
   if(ratio < 0.72){
@@ -830,7 +876,8 @@ function updateRunner(dt){
 
   const x = playerXFrac * W;
   const g = groundY(x);
-  const size = clamp(W * 0.105, 62, 92);
+  const compactLandscape = W > H && H <= 520;
+  const size = compactLandscape ? clamp(H * .14, 42, 60) : clamp(W * 0.105, 62, 92);
   const left = x - size*.5;
   const bottom = H - g + jumpY - size*.49;
   rotation += (speed/215) * dt * 60;
@@ -873,7 +920,8 @@ function updateEntities(dt, pr){
     const e=entities[i];
     e.x -= speed * dt;
 
-    let scale = clamp(.82 + (e.x/W)*.21, .76, 1.08);
+    const compactLandscape = W > H && H <= 520;
+    let scale = clamp(.82 + (e.x/W)*.21, .76, 1.08) * (compactLandscape ? clamp(H / 620, .62, .86) : 1);
     if(e.kind==="coin") scale *= .92;
 
     const w = e.w * scale;
