@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -468,6 +469,46 @@ button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255
   .statsrow .hudcard{padding:7px}
 }
 
+
+/* ---------------------------------------------------------
+   MOBILE LANDSCAPE GAMEPLAY CLEANUP
+   Presentation-only overrides. Desktop remains unchanged.
+--------------------------------------------------------- */
+@media (orientation: landscape) and (max-height: 520px) {
+  /* Remove the large bottom progress/radar overlay on phones. */
+  .rewardbar{
+    display:none!important;
+  }
+
+  /* Remove the heavy dark shading along the bottom edge. */
+  #sceneShade{
+    background:rgba(0,0,0,.035)!important;
+  }
+
+  /* Keep the play area open and unobstructed. */
+  #jumpHint{
+    left:50%!important;
+    right:auto!important;
+    bottom:7px!important;
+    transform:translateX(-50%)!important;
+    font-size:7px!important;
+    padding:5px 8px!important;
+    opacity:.78;
+  }
+
+  #sound{
+    right:calc(8px + env(safe-area-inset-right))!important;
+    bottom:7px!important;
+    font-size:7px!important;
+    padding:5px 7px!important;
+  }
+
+  /* Coins stay visually readable above obstacles. */
+  .coin{
+    z-index:12;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -609,8 +650,13 @@ function resize(){
   H=innerHeight;
 
   const compactViewport = Math.min(W,H) <= 520;
-  gravity = compactViewport ? 3600 : 4000;
-  jumpPower = compactViewport ? Math.sqrt(2 * gravity * Math.min(W,H) * .25) : 1580;
+  gravity = compactViewport ? 3450 : 4000;
+
+  // Mobile landscape needs more airborne carry for compact combo waves.
+  // Desktop physics remain unchanged.
+  jumpPower = compactViewport
+    ? Math.sqrt(2 * gravity * Math.min(W,H) * .38)
+    : 1580;
 
   const ratio=W/Math.max(H,1);
   if(ratio < 0.72){
@@ -690,7 +736,10 @@ function addEntity(kind,x,raise=0,type=""){
   if(type==="barrel") spec={w:82,h:104,hx:12,hy:23,hw:55,hh:57,groundInset:3,tilt:0};
   if(type==="spike") spec={w:148,h:93,hx:17,hy:31,hw:113,hh:42,groundInset:2,tilt:-2};
 
-  const adjustedRaise = kind === "coin" && Math.min(W,H) <= 520 ? raise * .25 : raise;
+  const compactViewport = Math.min(W,H) <= 520;
+  const adjustedRaise = kind === "coin" && compactViewport
+    ? Math.max(raise * .62, 84)
+    : raise;
   const e={kind,type,el,x,raise:adjustedRaise,...spec,collected:false,passed:false,spin:rand(-8,8)};
   entities.push(e);
   return e;
@@ -745,9 +794,15 @@ function addTriplePattern(x, pressure=false){
 
   // Compact enough to clear in one committed long jump.
   const compactViewport = Math.min(W,H) <= 520;
-  const speedAdjust=clamp((speed-700)*(compactViewport ? 0.02 : 0.035),0,compactViewport ? 12 : 22);
-  const gap1=compactViewport ? (pressure ? 105 : 112) + speedAdjust : (pressure ? 148 : 158) + speedAdjust;
-  const gap2=compactViewport ? (pressure ? 110 : 118) + speedAdjust : (pressure ? 154 : 166) + speedAdjust;
+  const speedAdjust=clamp((speed-700)*(compactViewport ? 0.018 : 0.035),0,compactViewport ? 10 : 22);
+
+  const gap1=compactViewport
+    ? (pressure ? 98 : 106) + speedAdjust
+    : (pressure ? 148 : 158) + speedAdjust;
+
+  const gap2=compactViewport
+    ? (pressure ? 104 : 112) + speedAdjust
+    : (pressure ? 154 : 166) + speedAdjust;
 
   const a=addEntity("obstacle",x,0,order[0]);
   const b=addEntity("obstacle",x+gap1,0,order[1]);
@@ -767,9 +822,15 @@ function addTriplePattern(x, pressure=false){
 
 
 function triggerTripleSpeedBoost(){
-  // Give enough forward momentum before the triple reaches the player.
-  tripleBoostAmount = clamp(speed * 0.25, 185, 275);
-  tripleBoostUntil = elapsed + 3.2;
+  // Mobile needs a little more horizontal carry because the playable
+  // landscape area is compressed. Desktop boost remains unchanged.
+  const compactViewport = Math.min(W,H) <= 520;
+
+  tripleBoostAmount = compactViewport
+    ? clamp(speed * .32, 220, 320)
+    : clamp(speed * .25, 185, 275);
+
+  tripleBoostUntil = elapsed + (compactViewport ? 3.45 : 3.2);
 
   announce("SPEED UP — LONG JUMP!");
 }
@@ -1050,7 +1111,15 @@ function updateEntities(dt, pr){
           // Once the player has reached a genuine jump height, treat the
           // triple as one long-jump challenge instead of three separate
           // invisible collision walls.
-          const tripleClearHeight = W < 640 ? 72 : 82;
+          const compactViewport = Math.min(W,H) <= 520;
+
+          // On mobile, the character is visually smaller and the road is
+          // compressed. Once a properly timed jump is clearly airborne,
+          // let the player carry across the triple as one long-jump challenge.
+          const tripleClearHeight = compactViewport
+            ? clamp(Math.min(W,H) * .13, 44, 58)
+            : 82;
+
           if(jumpY >= tripleClearHeight){
             continue;
           }
