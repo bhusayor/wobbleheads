@@ -312,39 +312,39 @@ button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255
   .hud{inset:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) auto calc(8px + env(safe-area-inset-left));gap:7px}
   .brand{padding:6px 9px;border-radius:11px}
   .brand img{width:25px;height:25px}
-  .brandTitle{font-size:clamp(13px,2.8vw,18px)}
+  .brandTitle{font-size:clamp(11px,2.2vw,15px)}
   .brandSub{font-size:7px;margin-top:3px}
   .hudright{gap:6px}
-  .hudcard{min-width:78px;padding:6px 8px;border-radius:11px}
-  .small{font-size:7px;letter-spacing:.1em}
-  .big{font-size:clamp(18px,4vw,25px)}
+  .hudcard{min-width:66px;padding:5px 7px;border-radius:10px}
+  .small{font-size:6px;letter-spacing:.08em}
+  .big{font-size:clamp(15px,3.2vw,20px)}
   #message{top:calc(53px + env(safe-area-inset-top));font-size:12px;padding:6px 10px}
   .warning{top:35%;right:5%;font-size:clamp(16px,3vw,24px)}
-  .rewardbar{left:50%;right:auto;bottom:calc(6px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(68vw,700px)}
-  .barbox{padding:7px 10px 6px;border-radius:12px}
-  .radarMeta{font-size:9px;margin-bottom:4px}
-  .radarTrack{height:10px}
-  .radarLabels{font-size:8px;height:14px;margin-top:4px}
-  #radarNeedle{width:14px;height:14px;border-width:2px}
-  #jumpHint{right:calc(8px + env(safe-area-inset-right));bottom:calc(58px + env(safe-area-inset-bottom));font-size:8px;padding:7px 10px}
-  #sound{right:calc(8px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));padding:6px 8px;font-size:8px}
+  .rewardbar{left:50%;right:auto;bottom:calc(5px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(58vw,560px)}
+  .barbox{padding:5px 8px 4px;border-radius:10px}
+  .radarMeta{font-size:7px;margin-bottom:3px}
+  .radarTrack{height:7px}
+  .radarLabels{font-size:6px;height:11px;margin-top:3px}
+  #radarNeedle{width:11px;height:11px;border-width:2px}
+  #jumpHint{right:calc(8px + env(safe-area-inset-right));bottom:calc(45px + env(safe-area-inset-bottom));font-size:7px;padding:6px 8px}
+  #sound{right:calc(8px + env(safe-area-inset-right));bottom:calc(7px + env(safe-area-inset-bottom));padding:5px 7px;font-size:7px}
   .screen{align-items:center;overflow-y:auto;padding:calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left))}
   .panel{width:min(92vw,900px);max-height:calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;padding:clamp(14px,3vh,24px) clamp(18px,3vw,32px);border-radius:20px}
   .hero{grid-template-columns:minmax(0,1fr) 90px;gap:12px}
   .hero img{width:82px;justify-self:end}
   .eyebrow{font-size:8px;letter-spacing:.13em;margin-bottom:5px}
-  h1{font-size:clamp(38px,8vh,58px);line-height:.82}
-  h2{font-size:clamp(34px,8vh,56px);line-height:.82}
-  .lead{font-size:clamp(11px,2.1vh,15px);line-height:1.25;margin:9px 0}
-  .rules{grid-template-columns:repeat(3,1fr);gap:7px;margin:10px 0 12px}
-  .rule{padding:8px;font-size:10px;line-height:1.2;border-radius:10px}
-  .rule b{font-size:10px;margin-bottom:3px}
-  button{min-height:38px;padding:8px 13px;font-size:11px}
+  h1{font-size:clamp(32px,6.5vh,48px);line-height:.82}
+  h2{font-size:clamp(30px,6.5vh,46px);line-height:.82}
+  .lead{font-size:clamp(10px,1.8vh,13px);line-height:1.2;margin:7px 0}
+  .rules{grid-template-columns:repeat(3,1fr);gap:5px;margin:8px 0 9px}
+  .rule{padding:6px;font-size:8px;line-height:1.15;border-radius:8px}
+  .rule b{font-size:8px;margin-bottom:2px}
+  button{min-height:32px;padding:6px 11px;font-size:9px}
   #resultScreen .panel{max-width:620px}
   #resultScreen .lead{margin:9px 0}
-  #tier{font-size:clamp(20px,5vh,32px);padding:7px 10px;margin-top:6px}
-  .statsrow{gap:7px;margin:10px 0 12px}
-  .statsrow .hudcard{min-width:120px;padding:7px 9px}
+  #tier{font-size:clamp(18px,4vh,27px);padding:6px 9px;margin-top:5px}
+  .statsrow{gap:6px;margin:8px 0 9px}
+  .statsrow .hudcard{min-width:100px;padding:6px 8px}
   #resultScreen [style*="display:flex"]{gap:7px!important}
 }
 
@@ -400,6 +400,34 @@ button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255
   h1{font-size:clamp(36px,12.5vw,50px)}
   .lead{font-size:13px}
   .rule{font-size:10px}
+}
+
+@media (max-width: 430px){
+  .hud{inset:calc(6px + env(safe-area-inset-top)) 6px auto;gap:4px}
+  .brand{padding:6px 7px;border-radius:10px}
+  .brand img{width:22px;height:22px}
+  .brandTitle{font-size:11px}
+  .hudright{gap:4px}
+  .hudcard{padding:5px 6px;border-radius:9px}
+  .small{font-size:6px}
+  .big{font-size:17px}
+  .rewardbar{left:6px;right:6px;bottom:calc(6px + env(safe-area-inset-bottom))}
+  .barbox{padding:6px 8px 5px}
+  .radarMeta{font-size:8px}
+  .radarTrack{height:8px}
+  .radarLabels{font-size:7px;height:13px}
+  #jumpHint{bottom:calc(62px + env(safe-area-inset-bottom));font-size:7px}
+  #sound{right:6px;bottom:calc(6px + env(safe-area-inset-bottom));font-size:7px}
+  .screen{padding:calc(10px + env(safe-area-inset-top)) 7px calc(10px + env(safe-area-inset-bottom))}
+  .panel{padding:16px 12px;border-radius:16px}
+  h1{font-size:clamp(35px,11vw,48px)}
+  h2{font-size:clamp(34px,10vw,48px)}
+  .lead{font-size:12px;line-height:1.3;margin:10px 0}
+  .rule{padding:8px;font-size:10px}
+  .rule b{font-size:11px}
+  button{min-height:42px;font-size:11px}
+  #tier{font-size:25px}
+  .statsrow .hudcard{padding:7px}
 }
 
 </style>
@@ -538,9 +566,9 @@ function resize(){
   W=innerWidth;
   H=innerHeight;
 
-  const compactLandscape = W > H && H <= 520;
-  gravity = compactLandscape ? 3600 : 4000;
-  jumpPower = compactLandscape ? Math.sqrt(2 * gravity * H * .24) : 1580;
+  const compactViewport = Math.min(W,H) <= 520;
+  gravity = compactViewport ? 3600 : 4000;
+  jumpPower = compactViewport ? Math.sqrt(2 * gravity * Math.min(W,H) * .25) : 1580;
 
   const ratio=W/Math.max(H,1);
   if(ratio < 0.72){
@@ -620,7 +648,8 @@ function addEntity(kind,x,raise=0,type=""){
   if(type==="barrel") spec={w:82,h:104,hx:12,hy:23,hw:55,hh:57,groundInset:3,tilt:0};
   if(type==="spike") spec={w:148,h:93,hx:17,hy:31,hw:113,hh:42,groundInset:2,tilt:-2};
 
-  const e={kind,type,el,x,raise,...spec,collected:false,passed:false,spin:rand(-8,8)};
+  const adjustedRaise = kind === "coin" && Math.min(W,H) <= 520 ? raise * .7 : raise;
+  const e={kind,type,el,x,raise:adjustedRaise,...spec,collected:false,passed:false,spin:rand(-8,8)};
   entities.push(e);
   return e;
 }
@@ -656,7 +685,10 @@ function addSinglePattern(x){
 function addDoublePattern(x, tighter=false){
   const order=shuffle(["spike","crate","barrel"]).slice(0,2);
 
-  const gap=clamp(150 + (speed-700)*0.04 + (tighter?0:12), 145, 205);
+  const compactViewport = Math.min(W,H) <= 520;
+  const gap=compactViewport
+    ? clamp(108 + (speed-700)*0.025 + (tighter?0:7), 104, 132)
+    : clamp(150 + (speed-700)*0.04 + (tighter?0:12), 145, 205);
 
   addEntity("obstacle",x,0,order[0]);
   addEntity("obstacle",x+gap,0,order[1]);
@@ -670,9 +702,10 @@ function addTriplePattern(x, pressure=false){
   const order=shuffle(["spike","crate","barrel"]);
 
   // Compact enough to clear in one committed long jump.
-  const speedAdjust=clamp((speed-700)*0.035,0,22);
-  const gap1=(pressure ? 148 : 158) + speedAdjust;
-  const gap2=(pressure ? 154 : 166) + speedAdjust;
+  const compactViewport = Math.min(W,H) <= 520;
+  const speedAdjust=clamp((speed-700)*(compactViewport ? 0.02 : 0.035),0,compactViewport ? 12 : 22);
+  const gap1=compactViewport ? (pressure ? 105 : 112) + speedAdjust : (pressure ? 148 : 158) + speedAdjust;
+  const gap2=compactViewport ? (pressure ? 110 : 118) + speedAdjust : (pressure ? 154 : 166) + speedAdjust;
 
   const a=addEntity("obstacle",x,0,order[0]);
   const b=addEntity("obstacle",x+gap1,0,order[1]);
@@ -876,8 +909,8 @@ function updateRunner(dt){
 
   const x = playerXFrac * W;
   const g = groundY(x);
-  const compactLandscape = W > H && H <= 520;
-  const size = compactLandscape ? clamp(H * .14, 42, 60) : clamp(W * 0.105, 62, 92);
+  const compactViewport = Math.min(W,H) <= 520;
+  const size = compactViewport ? clamp(Math.min(W,H) * .115, 36, 50) : clamp(W * 0.105, 62, 92);
   const left = x - size*.5;
   const bottom = H - g + jumpY - size*.49;
   rotation += (speed/215) * dt * 60;
@@ -920,8 +953,8 @@ function updateEntities(dt, pr){
     const e=entities[i];
     e.x -= speed * dt;
 
-    const compactLandscape = W > H && H <= 520;
-    let scale = clamp(.82 + (e.x/W)*.21, .76, 1.08) * (compactLandscape ? clamp(H / 620, .62, .86) : 1);
+    const compactViewport = Math.min(W,H) <= 520;
+    let scale = clamp(.82 + (e.x/W)*.21, .76, 1.08) * (compactViewport ? clamp(Math.min(W,H) / 680, .52, .72) : 1);
     if(e.kind==="coin") scale *= .92;
 
     const w = e.w * scale;
