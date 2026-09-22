@@ -1,20 +1,21 @@
-import { database, error, json } from '@/lib/server';
+import { error, json } from '@/lib/server';
 import { deriveWobbleWLStats } from '@/lib/site-config';
+import { createAdminClient } from '@/lib/supabase/admin';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET() {
   try {
-    const db = database();
-    const [attempts, claims] = await Promise.all([
-      db.prepare("SELECT COUNT(DISTINCT participant_id) AS count FROM xp_events WHERE event_key LIKE 'rarity:%'").first<{ count: number }>(),
-      db.prepare("SELECT wl_category,COUNT(*) AS count FROM participants WHERE wl_category IN ('gtd','fcfs') AND wl_status IN ('pending','approved') GROUP BY wl_category").all<{ wl_category: string; count: number }>(),
+    const admin = createAdminClient();
+    const [{ count: attempts }, { data: availability, error: availabilityError }] = await Promise.all([
+      admin.from('game_runs').select('user_id', { count: 'exact', head: true }),
+      admin.rpc('game_availability'),
     ]);
-    const counts = Object.fromEntries((claims.results || []).map((row) => [row.wl_category, Number(row.count || 0)]));
+    if (availabilityError) throw availabilityError;
     return json(deriveWobbleWLStats({
-      playersAttempted: Number(attempts?.count || 0),
-      gtdClaimed: counts.gtd || 0,
-      fcfsClaimed: counts.fcfs || 0,
+      playersAttempted: Number(attempts || 0),
+      gtdClaimed: Number(availability.GTD.capacity - availability.GTD.remaining),
+      fcfsClaimed: Number(availability.FCFS.capacity - availability.FCFS.remaining),
     }));
   } catch (cause) {
     return error(cause instanceof Error ? cause.message : 'Live WL numbers are temporarily unavailable.', 500);

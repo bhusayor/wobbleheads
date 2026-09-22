@@ -690,6 +690,48 @@ let jumpY=0, vy=0, onGround=true, rotation=0, spawnTimer=0, coinTimer=0, dustSpa
 let coins=0, bgScroll=0, jumpBuffer=0, tripleBoostUntil=0, tripleBoostAmount=0;
 let tripleGroupSeq=0, mobileClearedTripleGroups=new Set();
 
+const GAME_VERSION="wobble-1.0.0";
+let secureRun=null, heartbeatSequence=0, inputSequence=0, pendingInputs=[];
+let lastHeartbeatAt=0, thresholdSent={FCFS:false,GTD:false};
+let availability=null, gameRandom=Math.random, heartbeatInFlight=Promise.resolve();
+
+function seededRandom(seed){
+  let h=2166136261;
+  for(let i=0;i<seed.length;i++){h^=seed.charCodeAt(i);h=Math.imul(h,16777619)}
+  return ()=>{h+=0x6D2B79F5;let t=h;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296};
+}
+async function gameApi(path,body){
+  const response=await fetch('/api/game/'+path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store'});
+  const data=await response.json().catch(()=>({error:'Unexpected server response.'}));
+  if(!response.ok) throw new Error(data.error||'Request failed.');
+  return data;
+}
+function runPayload(extra={}){return {runId:secureRun?.runId,runToken:secureRun?.runToken,...extra}}
+function applyAvailability(next){
+  if(!next) return; availability=next;
+  const fcfsOpen=Boolean(next.FCFS?.open),gtdOpen=Boolean(next.GTD?.open);
+  document.querySelectorAll('.radarLabels .fcfs,.labels span:nth-child(2),.radarMarker.fcfs').forEach(el=>el.style.display=fcfsOpen?'':'none');
+  document.querySelectorAll('.radarLabels .gtd,.labels span:nth-child(3),.radarMarker.gtd').forEach(el=>el.style.display=gtdOpen?'':'none');
+  const rule=document.querySelector('.rules .rule:last-child');
+  if(rule){
+    if(!fcfsOpen&&!gtdOpen) rule.innerHTML='<b>WHITELIST ALLOCATION COMPLETE</b>Both reward pools are full. You can still play in practice mode.';
+    else rule.innerHTML='<b>WHITELIST REWARD</b>'+[fcfsOpen?'<strong>45 seconds</strong> · FCFS '+next.FCFS.remaining+' left':'',gtdOpen?'<strong>60 seconds</strong> · GTD '+next.GTD.remaining+' left':''].filter(Boolean).join(' · ');
+  }
+}
+async function sendHeartbeat(force=false){
+  if(!secureRun||(!force&&elapsed-lastHeartbeatAt<1.5)) return;
+  lastHeartbeatAt=elapsed; heartbeatSequence++;
+  const sequence=heartbeatSequence,clientElapsed=elapsed;
+  const events=pendingInputs.splice(0);
+  heartbeatInFlight=heartbeatInFlight.then(async()=>{try{const data=await gameApi('heartbeat',runPayload({sequence,clientElapsed,pendingInputs:events}));applyAvailability(data.availability)}catch{/* The next heartbeat records continuity; replaying an uncertain packet is unsafe. */}});
+  return heartbeatInFlight;
+}
+async function crossThreshold(which){
+  if(!secureRun||thresholdSent[which]) return; thresholdSent[which]=true;
+  try{const data=await gameApi('threshold',runPayload({threshold:which,eventSequence:inputSequence}));applyAvailability(data.availability);announce(which+' SECURED — VERIFICATION PENDING');sfx.tier()}
+  catch{thresholdSent[which]=false}
+}
+
 let PA={x:.09,y:.27}, PB={x:.94,y:.84}; let playerXFrac=.245;
 
 let gravity=4000, jumpPower=1580;
@@ -746,6 +788,7 @@ function slopeAngleDeg(){
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const rand=(a,b)=>Math.random()*(b-a)+a;
 const pick=a=>a[Math.floor(Math.random()*a.length)];
+const gamePick=a=>a[Math.floor(gameRandom()*a.length)];
 
 function audioInit(){
   if(!audio) audio=new (window.AudioContext||window.webkitAudioContext)();
@@ -811,10 +854,12 @@ function coinLine(startX,count,gap,base,arc=0){
 
 function shuffle(arr){
   const a=arr.slice();
-  for(let i=a.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [a[i],a[j]]=[a[j],a[i]];
-  }
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+  return a;
+}
+function gameShuffle(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(gameRandom()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
   return a;
 }
 
@@ -824,14 +869,14 @@ function fairLandingGap(extra=0){
 }
 
 function addSinglePattern(x){
-  const type=pick(["spike","crate","barrel"]);
+  const type=gamePick(["spike","crate","barrel"]);
   addEntity("obstacle",x,0,type);
   coinLine(x+10,5,50,type==="spike"?138:128,38);
   return 0;
 }
 
 function addDoublePattern(x, tighter=false){
-  const order=shuffle(["spike","crate","barrel"]).slice(0,2);
+  const order=gameShuffle(["spike","crate","barrel"]).slice(0,2);
 
   const compactViewport = isPhoneLandscapeViewport();
   const gap=compactViewport
@@ -847,7 +892,7 @@ function addDoublePattern(x, tighter=false){
 }
 
 function addTriplePattern(x, pressure=false){
-  const order=shuffle(["spike","crate","barrel"]);
+  const order=gameShuffle(["spike","crate","barrel"]);
 
   // Compact enough to clear in one committed long jump.
   const compactViewport = isPhoneLandscapeViewport();
@@ -908,7 +953,7 @@ function spawnPattern(){
 
   }else if(t < 30){
     // 25–29s: every wave is a visible 2–3 obstacle combo.
-    const useTriple=Math.random()<0.32;
+    const useTriple=gameRandom()<0.32;
     tripleWave=useTriple;
     if(useTriple) triggerTripleSpeedBoost();
     span=useTriple
@@ -917,7 +962,7 @@ function spawnPattern(){
 
   }else if(t < 33){
     // 30–32s: triples become more common and spacing tightens slightly.
-    const useTriple=Math.random()<0.48;
+    const useTriple=gameRandom()<0.48;
     tripleWave=useTriple;
     if(useTriple) triggerTripleSpeedBoost();
     span=useTriple
@@ -926,7 +971,7 @@ function spawnPattern(){
 
   }else if(t < 40){
     // 33–39s: hard GTD push, mostly triple combos.
-    const useTriple=Math.random()<0.68;
+    const useTriple=gameRandom()<0.68;
     tripleWave=useTriple;
     if(useTriple) triggerTripleSpeedBoost();
     span=useTriple
@@ -935,7 +980,7 @@ function spawnPattern(){
 
   }else{
     // Endless mode: compact pairs/triples only.
-    const useTriple=Math.random()<0.74;
+    const useTriple=gameRandom()<0.74;
     tripleWave=useTriple;
     if(useTriple) triggerTripleSpeedBoost();
     span=useTriple
@@ -963,6 +1008,7 @@ function spawnCoinBonus(){
 
 function jump(){
   if(!running) return;
+  inputSequence++; pendingInputs.push({sequence:inputSequence,gameTime:Number(elapsed.toFixed(3)),type:"jump"});
 
   if(onGround){
     onGround=false;
@@ -1202,7 +1248,7 @@ function updateEntities(dt, pr){
   return false;
 }
 
-function finish(){
+async function finish(){
   running=false;
   cancelAnimationFrame(raf);
   sfx.hit();
@@ -1212,28 +1258,27 @@ function finish(){
   
   tier.className="";
   claim.classList.add("hidden");
-
-  if(elapsed>=60){
-    resultTitle.innerHTML="GTD.<br>YOU EARNED IT.";
-    tier.textContent="GTD UNLOCKED";
-    tier.className="gtd";
-    resultCopy.textContent=`You survived ${elapsed.toFixed(1)}s and collected ${coins} coins. Guaranteed whitelist access unlocked.`;
-    claim.classList.remove("hidden");
-    sfx.tier();
-  }else if(elapsed>=45){
-    resultTitle.innerHTML="FCFS.<br>YOU MADE IT.";
-    tier.textContent="FCFS UNLOCKED";
-    tier.className="fcfs";
-    resultCopy.textContent=`You survived ${elapsed.toFixed(1)}s and collected ${coins} coins. FCFS whitelist access unlocked.`;
-    claim.classList.remove("hidden");
-    sfx.tier();
-  }else{
-    resultTitle.innerHTML="YOU GOT<br>WOBBLED.";
-    tier.textContent="NO WL — YET";
-    tier.className="none";
-    resultCopy.textContent=pick(["That jump was late.","The hill just collected another Wobble.","Your timing needs work.","The barrel won this round."]);
-  }
+  resultTitle.innerHTML="VERIFYING<br>YOUR RUN…";
+  tier.textContent="SERVER CHECK IN PROGRESS";
+  tier.className="none";
+  resultCopy.textContent="Your threshold position is saved while the server verifies this run.";
   setTimeout(()=>resultScreen.classList.remove("hidden"),170);
+  try{
+    await sendHeartbeat(true);
+    const verified=await gameApi('finish',runPayload({clientElapsed:elapsed,coins}));
+    applyAvailability(verified.availability);
+    if(verified.status==='verified'&&verified.tier){
+      resultTitle.innerHTML=verified.tier+".<br>YOU EARNED IT.";
+      tier.textContent=verified.tier+" VERIFIED";
+      tier.className=verified.tier.toLowerCase();
+      resultCopy.textContent="Server verification passed. Add your wallet to claim your "+verified.tier+" spot.";
+      claim.classList.remove("hidden"); sfx.tier();
+    }else{
+      resultTitle.innerHTML="RUN NOT<br>VERIFIED.";
+      tier.textContent="NO WL — YET"; tier.className="none";
+      resultCopy.textContent="This run could not be verified. Try again with a stable connection.";
+    }
+  }catch(error){resultTitle.innerHTML="CHECK<br>PENDING.";resultCopy.textContent=error.message||"Verification is temporarily unavailable."}
 }
 
 function loop(ts){
@@ -1253,8 +1298,9 @@ function loop(ts){
   if(elapsed>26) speedveil.classList.add("fast");
 
   if(elapsed>=25 && elapsed-dt<25){announce("COMBO MODE — 2/3 HAZARDS"); sfx.warn();}
-  if(elapsed>=45 && elapsed-dt<45){announce("FCFS ZONE UNLOCKED"); sfx.tier();}
-  if(elapsed>=60 && elapsed-dt<60){announce("GTD ZONE UNLOCKED"); sfx.tier();}
+  if(elapsed>=45 && elapsed-dt<45 && availability?.FCFS?.open){void crossThreshold("FCFS")}
+  if(elapsed>=60 && elapsed-dt<60 && availability?.GTD?.open){void crossThreshold("GTD")}
+  void sendHeartbeat();
 
   updateBackground(dt);
   const pr = updateRunner(dt);
@@ -1296,7 +1342,7 @@ function loop(ts){
 
       const sequenceClearTime=(sequenceSpan+clearanceBuffer)/Math.max(speed,1);
       spawnTimer=Math.max(
-        obstacleGap*rand(.94,1.06),
+        obstacleGap*(gameRandom()*(1.06-.94)+.94),
         sequenceClearTime
       );
     }
@@ -1312,8 +1358,16 @@ function loop(ts){
   raf = requestAnimationFrame(loop);
 }
 
-function begin(){
+async function begin(){
   if(isMobilePortrait()) return;
+  const button=this instanceof HTMLElement?this:$("startBtn");
+  button.disabled=true;
+  try{
+    const started=await gameApi('start',{width:innerWidth,height:innerHeight,gameVersion:GAME_VERSION});
+    secureRun=started; gameRandom=seededRandom(started.seed); applyAvailability(started.availability);
+    heartbeatSequence=0;inputSequence=0;pendingInputs=[];lastHeartbeatAt=0;thresholdSent={FCFS:false,GTD:false};heartbeatInFlight=Promise.resolve();
+  }catch(error){alert(error.message+" Sign in with X on the homepage, then return to play.");button.disabled=false;return}
+  button.disabled=false;
   audioInit();
   resize();
   reset();
@@ -1327,7 +1381,11 @@ function begin(){
 
 $("startBtn").onclick=begin;
 $("retry").onclick=begin;
-$("claim").onclick=()=>alert("Prototype: connect this to wallet verification / whitelist claim.");
+$("claim").onclick=async()=>{
+  const wallet=prompt("Paste your EVM or Solana wallet address:"); if(!wallet) return;
+  try{const result=await gameApi('claim',{wallet});alert(result.tier+" whitelist spot claimed for "+result.wallet)}catch(error){alert(error.message)}
+};
+void gameApi('availability').then(applyAvailability).catch(()=>{});
 $("sound").onclick=()=>{
   soundOn=!soundOn;
   $("sound").textContent="SOUND: "+(soundOn?"ON":"OFF");
