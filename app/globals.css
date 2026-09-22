@@ -29,3 +29,5 @@ body{font-family:'DM Sans',sans-serif}.intro-copy h1,.world-section h2,.hunt-ban
 @media(max-width:1050px){.chapter-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.chapter-grid>div{min-height:220px}}
 @media(max-width:800px){.mint-facts{grid-template-columns:1fr}.post-mint-story,.post-mint-beats{grid-template-columns:1fr;display:grid}.chapter-grid{grid-template-columns:1fr 1fr!important}.chapter-grid>div{min-height:190px}.chapter-grid>div:last-child{grid-column:span 2}}
 @media(max-width:540px){.mint-links{display:grid;align-items:start}.chapter-grid{grid-template-columns:1fr!important}.chapter-grid>div:last-child{grid-column:auto}.chapter-grid>div{min-height:0}.post-mint-story{margin-top:38px}.post-mint-beats{gap:18px}}
+
+.x-auth-button{background:transparent;color:inherit}.x-auth-button:disabled{cursor:wait;opacity:.65}.x-auth-avatar{width:25px;height:25px;border-radius:50%;object-fit:cover;border:1px solid var(--ink);flex:0 0 auto}

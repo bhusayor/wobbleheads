@@ -7,6 +7,7 @@ import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { deriveWobbleWLStats, FCFS_TOTAL, GTD_TOTAL, TOTAL_GAME_WL } from '@/lib/site-config';
+import XAuthButton from '@/components/x-auth-button';
 import traitOptions from './trait-options.json';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -206,7 +207,7 @@ export default function Studio() {
     <header className="site-header">
       <a className="brand" href="#home" aria-label="Wobbleheads home"><span className="brand-mark">w<span className="brand-eye">•</span></span><span>WOBBLEHEADS<span className="brand-dot">.</span></span></a>
       <nav className={menuOpen ? 'main-nav is-open' : 'main-nav'} aria-label="Main navigation"><a href="#studio" onClick={() => setMenuOpen(false)}>Studio</a>{/* <a href="/tasks" onClick={() => setMenuOpen(false)}>Tasks</a> */}<a href="#collection-preview" onClick={() => setMenuOpen(false)}>Collection</a><a href="#traits" onClick={() => setMenuOpen(false)}>Traits</a><a href="#story" onClick={() => setMenuOpen(false)}>Story</a><a href="#roadmap" onClick={() => setMenuOpen(false)}>Roadmap</a></nav>
-      <div className="header-actions"><a className="header-link x-follow" href="https://x.com/Wobbleheadds" target="_blank" rel="noopener noreferrer">Follow on X <ArrowUpRight size={15}/></a>{/* <a className="header-link x-login" href="https://x.com/i/flow/login" target="_blank" rel="noopener noreferrer">Sign in with X <ArrowUpRight size={15}/></a> */}<button className="menu-toggle" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close menu' : 'Open menu'}>{menuOpen ? <X/> : <Menu/>}</button></div>
+      <div className="header-actions"><XAuthButton/><button className="menu-toggle" type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Close menu' : 'Open menu'}>{menuOpen ? <X/> : <Menu/>}</button></div>
     </header>
     <main>
       <section className="intro-studio" id="studio">

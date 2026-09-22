@@ -1,5 +1,5 @@
 import { env } from '@/lib/runtime-env';
-import { getChatGPTUser } from '@/app/chatgpt-auth';
+import { createClient } from '@/lib/supabase/server';
 import { TASK_KEYS, XP } from './site-config';
 
 export type Participant = {
@@ -15,7 +15,16 @@ export function database() {
 }
 
 export async function identity() {
-  return getChatGPTUser();
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  const metadata = user.user_metadata || {};
+  const handle = metadata.user_name || metadata.preferred_username;
+  return {
+    userId: user.id,
+    email: user.email || `${user.id}@x-user.invalid`,
+    fullName: metadata.full_name || metadata.name || (handle ? `@${handle}` : 'Wobblehead'),
+  };
 }
 
 export async function currentParticipant(create = false): Promise<Participant | null> {
