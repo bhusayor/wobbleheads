@@ -170,11 +170,22 @@ h1{font-size:clamp(52px,9vw,100px)} h2{font-size:clamp(42px,8vw,80px)}
 .rule{background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.08);border-radius:15px;padding:13px;font-size:12px;line-height:1.3;font-weight:700}
 .rule b{display:block;font-size:14px;margin-bottom:5px}
 button{
-  appearance:none;border:none;border-radius:14px;background:linear-gradient(180deg,#ffdd64,#f3ba31);
-  color:#171411;padding:14px 20px;font:inherit;font-weight:1000;text-transform:uppercase;letter-spacing:.04em;
-  cursor:pointer;box-shadow:0 11px 22px rgba(0,0,0,.25)
+  appearance:none;border:1.5px solid #25231f;border-radius:3px;background:#fa6b44;
+  color:#25231f;padding:14px 20px;font:inherit;font-weight:1000;text-transform:uppercase;letter-spacing:.04em;
+  cursor:pointer;box-shadow:4px 4px 0 #25231f;transition:transform .2s,box-shadow .2s,background .2s
 }
-button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255,255,255,.12)}
+button:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 #25231f}
+button:disabled{cursor:wait;opacity:.72}
+button.alt{background:#f5f0e7;color:#25231f;border:1.5px solid #25231f}
+.share-field{min-width:250px;flex:1;padding:12px 13px;border:1.5px solid #25231f;border-radius:3px;background:#f5f0e7;color:#25231f;font:inherit;font-weight:750;outline:none;box-shadow:3px 3px 0 rgba(37,35,31,.55)}
+.share-field:focus{border-color:#fa6b44;box-shadow:3px 3px 0 #fa6b44}
+.verify-state{display:flex;align-items:center;gap:13px;padding:20px 2px;font-weight:1000;letter-spacing:.08em}
+.verify-pulse{display:flex;gap:5px}.verify-pulse i{width:9px;height:9px;border-radius:50%;background:#fa6b44;animation:verifyPulse .9s ease-in-out infinite}.verify-pulse i:nth-child(2){animation-delay:.14s}.verify-pulse i:nth-child(3){animation-delay:.28s}
+@keyframes verifyPulse{0%,100%{transform:scale(.65);opacity:.38}50%{transform:scale(1.18);opacity:1}}
+.feedback-screen{z-index:70;background:rgba(0,0,0,.64)}
+.feedback-card{width:min(460px,92vw);background:#f5f0e7;color:#25231f;border:1.5px solid #25231f;border-radius:3px;padding:25px;box-shadow:10px 10px 0 #fa6b44}
+.feedback-mark{width:42px;height:42px;display:grid;place-items:center;background:#f8d666;border:1.5px solid #25231f;font-size:24px;font-weight:1000;transform:rotate(-4deg)}
+.feedback-card h3{font-size:28px;line-height:1;margin:17px 0 10px}.feedback-card p{margin:0 0 22px;line-height:1.5;font-weight:700;color:#514d47}.feedback-card button{width:100%}
 .hidden{display:none!important}
 #tier{display:inline-block;border-radius:14px;padding:10px 14px;margin-top:10px;font-size:clamp(23px,4vw,40px);font-weight:1000;letter-spacing:-.05em}
 #tier.none{background:rgba(255,255,255,.1)}
@@ -651,15 +662,24 @@ button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255
       <div id="shareFlow" class="hidden" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.25);padding-top:15px">
         <div id="postStep">
           <label for="postUrl" style="display:block;font-size:10px;font-weight:900;letter-spacing:.08em;margin-bottom:7px">PASTE YOUR X POST LINK</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="postUrl" type="url" placeholder="https://x.com/yourname/status/…" style="min-width:250px;flex:1;padding:11px;border:1.5px solid #3a2f22"><button id="verifyShare" type="button">Submit post</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="postUrl" class="share-field" type="url" placeholder="https://x.com/yourname/status/…"><button id="verifyShare" type="button">Submit post</button></div>
         </div>
-        <div id="shareSpinner" class="hidden" style="padding:18px 0;font-weight:900">KEEPING IT WOBBLING… 🫨</div>
+        <div id="shareSpinner" class="verify-state hidden" role="status" aria-live="polite"><span id="verifyStatusText">VERIFYING…</span><span class="verify-pulse" aria-hidden="true"><i></i><i></i><i></i></span></div>
         <div id="walletStep" class="hidden">
           <label for="walletAddress" style="display:block;font-size:10px;font-weight:900;letter-spacing:.08em;margin-bottom:7px">YOUR EVM WALLET</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="walletAddress" type="text" placeholder="0x…" style="min-width:250px;flex:1;padding:11px;border:1.5px solid #3a2f22"><button id="submitWallet" type="button">Save wallet</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="walletAddress" class="share-field" type="text" placeholder="0x…"><button id="submitWallet" type="button">Save wallet</button></div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="screen feedback-screen hidden" id="feedbackModal" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
+  <div class="feedback-card">
+    <div class="feedback-mark" aria-hidden="true">!</div>
+    <h3 id="feedbackTitle">CHECK THAT AGAIN</h3>
+    <p id="feedbackMessage">Something needs your attention.</p>
+    <button id="feedbackClose" type="button">Got it</button>
   </div>
 </div>
 
@@ -693,6 +713,13 @@ const timeEl=$("time"), coinsEl=$("coins"), radarFill=$("radarFill"), radarNeedl
 const startScreen=$("startScreen"), resultScreen=$("resultScreen"), flash=$("flash");
 const resultTitle=$("resultTitle"), tier=$("tier"), resultCopy=$("resultCopy"), claim=$("claim");
 const shareFlow=$("shareFlow"),postStep=$("postStep"),shareSpinner=$("shareSpinner"),walletStep=$("walletStep");
+const feedbackModal=$("feedbackModal"),feedbackMessage=$("feedbackMessage"),verifyStatusText=$("verifyStatusText");
+
+function showFeedback(message,title="CHECK THAT AGAIN"){
+  $("feedbackTitle").textContent=title;feedbackMessage.textContent=message;feedbackModal.classList.remove("hidden");$("feedbackClose").focus();
+}
+function hideFeedback(){feedbackModal.classList.add("hidden")}
+function showVerifying(message){verifyStatusText.textContent=message;shareSpinner.classList.remove("hidden")}
 
 let W=innerWidth, H=innerHeight;
 let audio=null, soundOn=true;
@@ -1400,7 +1427,7 @@ async function begin(){
     const started=await gameApi('start',{width:innerWidth,height:innerHeight,gameVersion:GAME_VERSION});
     secureRun=started; gameRandom=seededRandom(started.seed); applyAvailability(started.availability);
     heartbeatSequence=0;inputSequence=0;pendingInputs=[];lastAcceptedInputAt=-Infinity;lastHeartbeatAt=0;thresholdSent={FCFS:false,GTD:false};heartbeatInFlight=Promise.resolve();
-  }catch(error){alert(error.message+" Sign in with X on the homepage, then return to play.");button.disabled=false;return}
+  }catch(error){showFeedback(error.message+" Sign in with X on the homepage, then return to play.","COULDN'T START");button.disabled=false;return}
   button.disabled=false;
   audioInit();
   resize();
@@ -1422,21 +1449,26 @@ $("claim").onclick=async()=>{
     shareFlow.classList.remove('hidden');
     if(prepared.submitted){postStep.classList.add('hidden');walletStep.classList.remove('hidden')}
     else $("postUrl").focus();
-  }catch(error){alert(error.message)}
+  }catch(error){showFeedback(error.message,"SHARE NOT READY")}
 };
 $("verifyShare").onclick=async()=>{
-  const postUrl=$("postUrl").value.trim();if(!postUrl){alert('Paste your X post link first.');return}
-  postStep.classList.add('hidden');shareSpinner.classList.remove('hidden');
+  const postUrl=$("postUrl").value.trim();if(!postUrl){showFeedback('Paste the complete link to your X post before continuing.');return}
+  postStep.classList.add('hidden');showVerifying('VERIFYING POST…');
   try{
     await Promise.all([gameApi('share',{action:'submit',postUrl}),new Promise(resolve=>setTimeout(resolve,3000))]);
     shareSpinner.classList.add('hidden');walletStep.classList.remove('hidden');$("walletAddress").focus();
-  }catch(error){shareSpinner.classList.add('hidden');postStep.classList.remove('hidden');alert(error.message)}
+  }catch(error){shareSpinner.classList.add('hidden');postStep.classList.remove('hidden');showFeedback(error.message,"POST NOT VERIFIED")}
 };
 $("submitWallet").onclick=async()=>{
-  const wallet=$("walletAddress").value.trim();if(!wallet){alert('Enter your EVM wallet.');return}
-  try{const result=await gameApi('claim',{wallet});walletStep.innerHTML='<strong>'+result.tier+' CLAIM COMPLETE</strong><p>'+result.wallet+'</p>';claim.classList.add('hidden')}
-  catch(error){alert(error.message)}
+  const wallet=$("walletAddress").value.trim();if(!wallet){showFeedback('Enter the EVM wallet where you want to receive your whitelist spot.');return}
+  walletStep.classList.add('hidden');showVerifying('VERIFYING WALLET…');
+  try{
+    const [result]=await Promise.all([gameApi('claim',{wallet}),new Promise(resolve=>setTimeout(resolve,3000))]);
+    shareSpinner.classList.add('hidden');walletStep.classList.remove('hidden');walletStep.innerHTML='<strong>'+result.tier+' CLAIM COMPLETE</strong><p>'+result.wallet+'</p>';claim.classList.add('hidden')
+  }catch(error){shareSpinner.classList.add('hidden');walletStep.classList.remove('hidden');showFeedback(error.message,"WALLET NOT ACCEPTED")}
 };
+$("feedbackClose").onclick=hideFeedback;
+feedbackModal.onclick=e=>{if(e.target===feedbackModal)hideFeedback()};
 void gameApi('availability').then(applyAvailability).catch(()=>{});
 void checkGameAuth();
 $("sound").onclick=()=>{
@@ -1446,6 +1478,7 @@ $("sound").onclick=()=>{
 };
 
 addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&!feedbackModal.classList.contains("hidden")){hideFeedback();return}
   if(e.code==="Space"){
     e.preventDefault();
     if(e.repeat) return;
