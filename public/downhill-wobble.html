@@ -1433,6 +1433,7 @@ async function begin(){
   try{
     const started=await gameApi('start',{width:innerWidth,height:innerHeight,gameVersion:GAME_VERSION});
     secureRun=started; gameRandom=seededRandom(started.seed); applyAvailability(started.availability);
+    try{localStorage.setItem('wobble-stats-refresh',String(Date.now()))}catch{}
     heartbeatSequence=0;inputSequence=0;pendingInputs=[];lastAcceptedInputAt=-Infinity;lastHeartbeatAt=0;thresholdSent={FCFS:false,GTD:false};heartbeatInFlight=Promise.resolve();
   }catch(error){showFeedback(error.message+" Sign in with X on the homepage, then return to play.","COULDN'T START");button.disabled=false;return}
   button.disabled=false;

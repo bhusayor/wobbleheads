@@ -157,10 +157,14 @@ export default function Studio() {
       .then((data) => { if (active) { setWlStats(data); setWlStatsError(false); } })
       .catch(() => { if (active) setWlStatsError(true); });
     void loadStats();
-    const interval = window.setInterval(() => { if (document.visibilityState === 'visible') void loadStats(); }, 20_000);
+    const interval = window.setInterval(() => { if (document.visibilityState === 'visible') void loadStats(); }, 3_000);
     const refreshWhenVisible = () => { if (document.visibilityState === 'visible') void loadStats(); };
+    const refreshFromGame = (event: StorageEvent) => { if (event.key === 'wobble-stats-refresh') void loadStats(); };
     document.addEventListener('visibilitychange', refreshWhenVisible);
-    return () => { active = false; window.clearInterval(interval); document.removeEventListener('visibilitychange', refreshWhenVisible); };
+    window.addEventListener('focus', refreshWhenVisible);
+    window.addEventListener('pageshow', refreshWhenVisible);
+    window.addEventListener('storage', refreshFromGame);
+    return () => { active = false; window.clearInterval(interval); document.removeEventListener('visibilitychange', refreshWhenVisible); window.removeEventListener('focus', refreshWhenVisible); window.removeEventListener('pageshow', refreshWhenVisible); window.removeEventListener('storage', refreshFromGame); };
   }, []);
   useEffect(() => {
     const section = document.querySelector('.wl-allocation-section');
