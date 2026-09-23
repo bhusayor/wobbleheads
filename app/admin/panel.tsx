@@ -17,10 +17,10 @@ function ClaimTable({ tier, claims }: { tier: 'GTD' | 'FCFS'; claims: Claim[] })
     <div className="claim-table-wrap"><table>
       <thead><tr><th>#</th><th>X username</th><th>X post</th><th>EVM wallet</th></tr></thead>
       <tbody>{claims.length ? claims.map((claim, index) => <tr key={claim.user_id}>
-        <td>{String(index + 1).padStart(3, '0')}</td>
-        <td><strong>{claim.x_handle ? `@${claim.x_handle}` : 'Unavailable'}</strong></td>
-        <td>{claim.share_url ? <a href={claim.share_url} target="_blank" rel="noreferrer">View post <ArrowUpRight size={14}/></a> : <span>Unavailable</span>}</td>
-        <td><code>{claim.wallet_address}</code></td>
+        <td data-label="#">{String(index + 1).padStart(3, '0')}</td>
+        <td data-label="X username"><strong>{claim.x_handle ? `@${claim.x_handle}` : 'Unavailable'}</strong></td>
+        <td data-label="X post">{claim.share_url ? <a href={claim.share_url} target="_blank" rel="noreferrer">View post <ArrowUpRight size={14}/></a> : <span>Unavailable</span>}</td>
+        <td data-label="EVM wallet"><code>{claim.wallet_address}</code></td>
       </tr>) : <tr><td colSpan={4}><div className="claim-empty">No completed {tier} claims yet.</div></td></tr>}</tbody>
     </table></div>
   </section>;
