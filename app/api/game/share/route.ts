@@ -23,6 +23,10 @@ export async function POST(request: Request) {
   if (!handle) return gameError('Your X username is unavailable. Sign out and reconnect X.', 409);
   const gameRun = Array.isArray(eligibility.game_runs) ? eligibility.game_runs[0] : eligibility.game_runs;
   const seconds = Number(gameRun?.validated_survival_time || 0);
+  const { data: previousFcfs } = eligibility.tier === 'GTD'
+    ? await context.admin.from('reward_reservations').select('id').eq('user_id', context.user.id).eq('tier', 'FCFS').eq('status', 'released').limit(1).maybeSingle()
+    : { data: null };
+  const isGtdUpgrade = eligibility.tier === 'GTD' && Boolean(previousFcfs);
 
   if (body.action === 'prepare') {
     const { error } = await context.admin.from('whitelist_eligibility').update({ x_handle: handle, x_avatar_url: avatar || null }).eq('id', eligibility.id).eq('user_id', context.user.id);
@@ -30,9 +34,11 @@ export async function POST(request: Request) {
     const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
     const origin = new URL(request.url).hostname === 'localhost' ? new URL(request.url).origin : configuredOrigin || new URL(request.url).origin;
     const shareUrl = `${origin}/wobble-win/${eligibility.id}`;
-    const text = `I KEPT IT WOBBLING 🫨\n\nI survived ${seconds.toFixed(1)} seconds and secured my ${eligibility.tier} spot with @Wobbleheadds.\n\nThink you can beat my time?\n\n#KeepItWobbling`;
+    const text = isGtdUpgrade
+      ? `WL SPOT UPGRADED: FCFS → GTD 🫨\n\nI kept wobbling for ${seconds.toFixed(1)} seconds and earned my GTD upgrade with @Wobbleheadds.\n\nThe wobble paid off. Think you can reach GTD?\n\n#KeepItWobbling`
+      : `I KEPT IT WOBBLING 🫨\n\nI survived ${seconds.toFixed(1)} seconds and secured my ${eligibility.tier} spot with @Wobbleheadds.\n\nThink you can beat my time?\n\n#KeepItWobbling`;
     const intentUrl = `https://x.com/intent/post?${new URLSearchParams({ text, url: shareUrl })}`;
-    return gameJson({ intentUrl, shareUrl, handle, avatar: avatar || null, seconds, tier: eligibility.tier, submitted: eligibility.share_status === 'submitted' });
+    return gameJson({ intentUrl, shareUrl, handle, avatar: avatar || null, seconds, tier: eligibility.tier, isGtdUpgrade, submitted: eligibility.share_status === 'submitted' });
   }
 
   if (body.action === 'submit') {
