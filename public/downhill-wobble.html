@@ -178,6 +178,7 @@ button{
 button:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 #25231f}
 button:disabled{cursor:wait;opacity:.72}
 button.alt{background:#f5f0e7;color:#25231f;border:1.5px solid #25231f}
+.auth-pending{visibility:hidden;pointer-events:none}
 .share-field{min-width:250px;flex:1;padding:12px 13px;border:1.5px solid #25231f;border-radius:3px;background:#f5f0e7;color:#25231f;font:inherit;font-weight:750;outline:none;box-shadow:3px 3px 0 rgba(37,35,31,.55)}
 .share-field:focus{border-color:#fa6b44;box-shadow:3px 3px 0 #fa6b44}
 .verify-state{display:flex;align-items:center;gap:13px;padding:20px 2px;font-weight:1000;letter-spacing:.08em}
@@ -644,7 +645,7 @@ button.alt{background:#f5f0e7;color:#25231f;border:1.5px solid #25231f}
         <div class="rule"><b>COMBO MODE · 25s</b>After 25 seconds, obstacles start arriving in shuffled pairs and triples. Triple waves need one committed long jump.</div>
         <div class="rule"><b>WHITELIST REWARD</b>Survive <strong>45 seconds</strong> to unlock FCFS. Reach <strong>60 seconds</strong> to secure GTD.</div>
       </div>
-      <button id="startBtn">Sign in with X to Play</button>
+      <button id="startBtn" class="auth-pending" disabled>Start Wobbling</button>
     </div>
   </div>
 
@@ -755,6 +756,8 @@ async function checkGameAuth(){
     const data=await response.json(); gameAuthenticated=Boolean(data.authenticated);
   }catch{gameAuthenticated=false}
   $("startBtn").textContent=gameAuthenticated?"Start Wobbling":"Sign in with X to Play";
+  $("startBtn").disabled=false;
+  $("startBtn").classList.remove("auth-pending");
   return gameAuthenticated;
 }
 function runPayload(extra={}){return {runId:secureRun?.runId,runToken:secureRun?.runToken,...extra}}
