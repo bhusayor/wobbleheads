@@ -35,12 +35,22 @@ export default function AdminPanel() {
   const [notice, setNotice] = useState('');
   useEffect(() => {
     let active = true;
-    void fetch('/api/game/admin', { cache: 'no-store' }).then(async (response) => {
-      const body = await response.json() as ClaimData & { error?: string };
-      if (!response.ok) throw new Error(body.error || 'Could not load claims.');
-      if (active) setData(body);
-    }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load claims.'); });
-    return () => { active = false; };
+    async function refresh(silent = false) {
+      try {
+        const response = await fetch('/api/game/admin', { cache: 'no-store' });
+        const body = await response.json() as ClaimData & { error?: string };
+        if (!response.ok) throw new Error(body.error || 'Could not load claims.');
+        if (active) { setData(body); setError(''); }
+      } catch (cause: unknown) {
+        if (active && !silent) setError(cause instanceof Error ? cause.message : 'Could not load claims.');
+      }
+    }
+    void refresh();
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void refresh(true); }, 4000);
+    const refreshWhenVisible = () => { if (document.visibilityState === 'visible') void refresh(true); };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', refreshWhenVisible); document.removeEventListener('visibilitychange', refreshWhenVisible); };
   }, []);
 
   async function resetLiveData() {
@@ -58,7 +68,7 @@ export default function AdminPanel() {
   const total = (data?.gtd.length || 0) + (data?.fcfs.length || 0);
   return <main className="claims-admin">
     <header className="admin-topbar"><Link className="admin-brand" href="/"><span>W</span> WOBBLEHEADS.</Link><div className="admin-security"><ShieldCheck size={16}/> PRIVATE ADMIN</div></header>
-    <section className="admin-hero"><div><span>CLAIM OPERATIONS</span><h1>Whitelist dashboard</h1><p>Review completed game claims and export clean allocation lists for distribution.</p></div><div className="admin-live"><i></i> Live Supabase data</div></section>
+    <section className="admin-hero"><div><span>CLAIM OPERATIONS</span><h1>Whitelist dashboard</h1><p>Review completed game claims and export clean allocation lists for distribution.</p></div><div className="admin-live"><i></i> Live · updates every 4s</div></section>
     <section className="admin-metrics"><article><span>TOTAL CLAIMED</span><strong>{data ? total.toLocaleString() : '—'}</strong><small>of 2,200 spots</small></article><article className="metric-gtd"><span>GTD CLAIMED</span><strong>{data ? data.gtd.length.toLocaleString() : '—'}</strong><small>of 700 spots</small></article><article className="metric-fcfs"><span>FCFS CLAIMED</span><strong>{data ? data.fcfs.length.toLocaleString() : '—'}</strong><small>of 1,500 spots</small></article></section>
     {error && <div className="admin-error" role="alert">{error}</div>}
     {notice && <output className="admin-notice">{notice}</output>}
