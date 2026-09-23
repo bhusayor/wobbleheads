@@ -28,7 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const seconds = Number(run?.validated_survival_time || 0).toFixed(1);
   const isUpgrade = Boolean(previousFcfs);
   const accent = data.tier === 'GTD' ? '#f8d666' : '#b6d9ee';
-  const wobblehead = `${new URL(request.url).origin}/images/piece-1240-legendary.svg`;
+  const wobblehead = `${new URL(request.url).origin}/images/wobble-bowtie.png`;
   const handle = data.x_handle || 'wobblehead';
 
   return new ImageResponse(
