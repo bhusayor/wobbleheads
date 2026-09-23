@@ -50,7 +50,10 @@ export async function validateRun(admin: ReturnType<typeof createAdminClient>, r
   const flags: string[] = [];
   if (run.game_version !== GAME_VERSION) flags.push('game_version_mismatch');
   if ((Date.now() - Date.parse(run.last_heartbeat_at)) / 1000 > HEARTBEAT_GRACE_SECONDS) flags.push('stale_heartbeat');
-  if (Math.abs(serverElapsed - Number(run.client_elapsed || 0)) > 4) flags.push('clock_drift');
+  // Network and browser startup delays can make the server clock legitimately
+  // run ahead of gameplay. Only a client claiming time ahead of the server is
+  // suspicious; the validated survival already uses the smaller clock.
+  if (Number(run.client_elapsed || 0) - serverElapsed > 4) flags.push('clock_drift');
   const list = events || [];
   for (let index = 1; index < list.length; index++) {
     if (list[index].sequence <= list[index - 1].sequence || list[index].game_time < list[index - 1].game_time) flags.push('event_order');
