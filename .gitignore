@@ -5,6 +5,7 @@ dist/
 .wrangler/
 tsconfig.tsbuildinfo
 .env*
+!.env.example
 .dev.vars
 *.log
 __pycache__/
