@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   try { body = await request.json() as Record<string, unknown>; } catch { return gameError('Invalid request.'); }
 
   const { data: eligibility, error: eligibilityError } = await context.admin.from('whitelist_eligibility')
-    .select('id,tier,status,share_status,share_url,game_runs(validated_survival_time)')
+    .select('id,run_id,tier,status,share_status,share_url,game_runs(validated_survival_time)')
     .eq('user_id', context.user.id).in('status', ['verified', 'claimed']).maybeSingle();
   if (eligibilityError || !eligibility) return gameError('No verified game reward was found.', 409);
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const gameRun = Array.isArray(eligibility.game_runs) ? eligibility.game_runs[0] : eligibility.game_runs;
   const seconds = Number(gameRun?.validated_survival_time || 0);
   const { data: previousFcfs } = eligibility.tier === 'GTD'
-    ? await context.admin.from('reward_reservations').select('id').eq('user_id', context.user.id).eq('tier', 'FCFS').eq('status', 'released').limit(1).maybeSingle()
+    ? await context.admin.from('reward_reservations').select('id,game_runs!inner(status,validated_survival_time)').eq('user_id', context.user.id).eq('tier', 'FCFS').eq('status', 'released').neq('run_id', eligibility.run_id).eq('game_runs.status', 'completed').gte('game_runs.validated_survival_time', 45).limit(1).maybeSingle()
     : { data: null };
   const isGtdUpgrade = eligibility.tier === 'GTD' && Boolean(previousFcfs);
 
