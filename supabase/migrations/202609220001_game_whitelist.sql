@@ -290,8 +290,8 @@ begin
   if not found or v_run.status<>'completed' or v_run.validated_survival_time is null then raise exception 'run_not_verified'; end if;
   v_tier:=case when v_run.validated_survival_time>=60 then 'GTD' when v_run.validated_survival_time>=45 then 'FCFS' else null end;
   select * into v_existing from whitelist_eligibility where user_id=p_user_id and status in ('verified','claimed') for update;
-  if v_existing.tier='GTD' or (v_existing.tier='FCFS' and v_tier is distinct from 'GTD') then return jsonb_build_object('status','verified','tier',v_existing.tier,'survivalTime',v_run.validated_survival_time,'availability',game_availability()); end if;
   if v_tier is null then return jsonb_build_object('status','verified','tier',null,'survivalTime',v_run.validated_survival_time,'availability',game_availability()); end if;
+  if v_existing.tier='GTD' or (v_existing.tier='FCFS' and v_tier='FCFS') then return jsonb_build_object('status','verified','tier',v_tier,'ownedTier',v_existing.tier,'survivalTime',v_run.validated_survival_time,'availability',game_availability()); end if;
   select * into v_pool from reward_pools where tier=v_tier for update;
   if v_pool.confirmed_count>=v_pool.capacity then return jsonb_build_object('status','verified','tier',v_existing.tier,'survivalTime',v_run.validated_survival_time,'availability',game_availability()); end if;
   v_threshold:=case when v_tier='GTD' then 60 else 45 end;

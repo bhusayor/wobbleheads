@@ -24,11 +24,11 @@ begin
 
   v_tier:=case when v_run.validated_survival_time>=60 then 'GTD' when v_run.validated_survival_time>=45 then 'FCFS' else null end;
   select * into v_existing from whitelist_eligibility where user_id=p_user_id and status in ('verified','claimed') for update;
-  if v_existing.tier='GTD' or (v_existing.tier='FCFS' and v_tier is distinct from 'GTD') then
-    return jsonb_build_object('status','verified','tier',v_existing.tier,'survivalTime',v_run.validated_survival_time,'availability',game_availability());
-  end if;
   if v_tier is null then
     return jsonb_build_object('status','verified','tier',null,'survivalTime',v_run.validated_survival_time,'availability',game_availability());
+  end if;
+  if v_existing.tier='GTD' or (v_existing.tier='FCFS' and v_tier='FCFS') then
+    return jsonb_build_object('status','verified','tier',v_tier,'ownedTier',v_existing.tier,'survivalTime',v_run.validated_survival_time,'availability',game_availability());
   end if;
 
   select * into v_pool from reward_pools where tier=v_tier for update;
@@ -63,17 +63,3 @@ end $$;
 
 revoke execute on function public.award_verified_game_reward(uuid,uuid) from public,anon,authenticated;
 grant execute on function public.award_verified_game_reward(uuid,uuid) to service_role;
-
--- Repair verified threshold runs that completed before this function existed.
-do $$
-declare v_completed record;
-begin
-  for v_completed in
-    select distinct on (user_id) id,user_id
-    from public.game_runs
-    where status='completed' and validated_survival_time>=45
-    order by user_id,validated_survival_time desc,finished_at asc
-  loop
-    perform public.award_verified_game_reward(v_completed.id,v_completed.user_id);
-  end loop;
-end $$;

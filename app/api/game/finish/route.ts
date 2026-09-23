@@ -14,8 +14,6 @@ export async function POST(request: Request) {
     if (previous.status === 'verified') {
       const { data: awarded } = await context.admin.rpc('award_verified_game_reward', { p_run_id: run.runId, p_user_id: context.user.id });
       if (awarded) return gameJson({ ...previous, ...awarded });
-      const { data: existing } = await context.admin.from('whitelist_eligibility').select('tier').eq('user_id', context.user.id).in('status', ['verified', 'claimed']).maybeSingle();
-      if (existing?.tier) return gameJson({ ...previous, tier: existing.tier, status: 'verified' });
     }
     return gameJson(previous);
   }
@@ -29,8 +27,5 @@ export async function POST(request: Request) {
   const { data: awarded, error: awardError } = await context.admin.rpc('award_verified_game_reward', { p_run_id: run.runId, p_user_id: context.user.id });
   if (!awardError && awarded) return gameJson({ ...data, ...awarded });
 
-  // Deployments that have not installed the award RPC yet should still show
-  // a reward the player already owns instead of incorrectly showing no WL.
-  const { data: existing } = await context.admin.from('whitelist_eligibility').select('tier').eq('user_id', context.user.id).in('status', ['verified', 'claimed']).maybeSingle();
-  return gameJson(existing?.tier ? { ...data, tier: existing.tier, status: 'verified' } : data);
+  return gameJson(data);
 }
