@@ -1,3 +1,13 @@
+-- Keep this migration safe to run even when the earlier sharing-column update
+-- has not yet been applied to an existing project.
+alter table public.whitelist_eligibility add column if not exists x_handle text;
+alter table public.whitelist_eligibility add column if not exists x_avatar_url text;
+alter table public.whitelist_eligibility add column if not exists share_url text;
+alter table public.whitelist_eligibility add column if not exists share_post_id text;
+alter table public.whitelist_eligibility add column if not exists share_status text not null default 'not_started';
+alter table public.whitelist_eligibility add column if not exists shared_at timestamptz;
+create unique index if not exists whitelist_one_share_post on public.whitelist_eligibility(share_post_id) where share_post_id is not null;
+
 create or replace function public.award_verified_game_reward(p_run_id uuid,p_user_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare
