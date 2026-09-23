@@ -629,7 +629,7 @@ button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255
         <div class="rule"><b>COMBO MODE · 25s</b>After 25 seconds, obstacles start arriving in shuffled pairs and triples. Triple waves need one committed long jump.</div>
         <div class="rule"><b>WHITELIST REWARD</b>Survive <strong>45 seconds</strong> to unlock FCFS. Reach <strong>60 seconds</strong> to secure GTD.</div>
       </div>
-      <button id="startBtn">Start Wobbling</button>
+      <button id="startBtn">Sign in with X to Play</button>
     </div>
   </div>
 
@@ -693,7 +693,7 @@ let tripleGroupSeq=0, mobileClearedTripleGroups=new Set();
 const GAME_VERSION="wobble-1.0.0";
 let secureRun=null, heartbeatSequence=0, inputSequence=0, pendingInputs=[];
 let lastHeartbeatAt=0, thresholdSent={FCFS:false,GTD:false};
-let availability=null, gameRandom=Math.random, heartbeatInFlight=Promise.resolve();
+let availability=null, gameRandom=Math.random, heartbeatInFlight=Promise.resolve(), gameAuthenticated=false;
 
 function seededRandom(seed){
   let h=2166136261;
@@ -705,6 +705,14 @@ async function gameApi(path,body){
   const data=await response.json().catch(()=>({error:'Unexpected server response.'}));
   if(!response.ok) throw new Error(data.error||'Request failed.');
   return data;
+}
+async function checkGameAuth(){
+  try{
+    const response=await fetch('/api/auth/status',{credentials:'same-origin',cache:'no-store'});
+    const data=await response.json(); gameAuthenticated=Boolean(data.authenticated);
+  }catch{gameAuthenticated=false}
+  $("startBtn").textContent=gameAuthenticated?"Start Wobbling":"Sign in with X to Play";
+  return gameAuthenticated;
 }
 function runPayload(extra={}){return {runId:secureRun?.runId,runToken:secureRun?.runToken,...extra}}
 function applyAvailability(next){
@@ -1360,6 +1368,7 @@ function loop(ts){
 
 async function begin(){
   if(isMobilePortrait()) return;
+  if(!gameAuthenticated && !await checkGameAuth()){window.location.assign('/auth/x?next='+encodeURIComponent('/downhill-wobble.html'));return}
   const button=this instanceof HTMLElement?this:$("startBtn");
   button.disabled=true;
   try{
@@ -1386,6 +1395,7 @@ $("claim").onclick=async()=>{
   try{const result=await gameApi('claim',{wallet});alert(result.tier+" whitelist spot claimed for "+result.wallet)}catch(error){alert(error.message)}
 };
 void gameApi('availability').then(applyAvailability).catch(()=>{});
+void checkGameAuth();
 $("sound").onclick=()=>{
   soundOn=!soundOn;
   $("sound").textContent="SOUND: "+(soundOn?"ON":"OFF");

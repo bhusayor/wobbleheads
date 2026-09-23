@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowUpRight, ChevronDown, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
@@ -9,9 +9,11 @@ import { createClient } from '@/lib/supabase/client';
 export default function XAuthButton({ returnTo = '/' }: { returnTo?: string }) {
   const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState<User | null>(null);
-  const [busy, setBusy] = useState(Boolean(supabase));
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -19,14 +21,18 @@ export default function XAuthButton({ returnTo = '/' }: { returnTo?: string }) {
     }
     let active = true;
     void supabase.auth.getUser().then(({ data }) => {
-      if (active) { setUser(data.user); setBusy(false); }
+      if (active) setUser(data.user);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setAvatarFailed(false);
       setBusy(false);
     });
-    return () => { active = false; data.subscription.unsubscribe(); };
+    const closeMenu = (event: PointerEvent) => {
+      if (!wrapperRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeMenu);
+    return () => { active = false; data.subscription.unsubscribe(); document.removeEventListener('pointerdown', closeMenu); };
   }, [supabase]);
 
   const signIn = async () => {
@@ -51,8 +57,14 @@ export default function XAuthButton({ returnTo = '/' }: { returnTo?: string }) {
   const handle = user?.user_metadata?.user_name || user?.user_metadata?.preferred_username;
   const avatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.profile_image_url;
   const configured = Boolean(supabase);
-  return <button className="header-link x-auth-button" type="button" onClick={user ? signOut : signIn} disabled={busy || !configured} title={error || (!configured ? 'Add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to .env.local' : undefined)} aria-label={user ? `Signed in${handle ? ` as @${handle}` : ''}. Sign out` : 'Sign in with X'}>
-    {user && avatar && !avatarFailed && <Image className="x-auth-avatar" src={avatar} alt="" width={25} height={25} unoptimized loader={({ src }) => src} referrerPolicy="no-referrer" onError={() => setAvatarFailed(true)}/>}
-    {busy ? 'Checking…' : user ? (handle ? `@${handle}` : 'Sign out') : configured ? 'Sign in with X' : 'Sign in unavailable'} <ArrowUpRight size={15}/>
-  </button>;
+  return <div className="x-auth" ref={wrapperRef}>
+    <button className="header-link x-auth-button" type="button" onClick={user ? () => setMenuOpen((open) => !open) : signIn} disabled={busy || !configured} title={error || (!configured ? 'Add NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to .env.local' : undefined)} aria-label={user ? `Open account menu${handle ? ` for @${handle}` : ''}` : 'Sign in with X'} aria-expanded={user ? menuOpen : undefined}>
+      {user && avatar && !avatarFailed && <Image className="x-auth-avatar" src={avatar} alt="" width={25} height={25} unoptimized loader={({ src }) => src} referrerPolicy="no-referrer" onError={() => setAvatarFailed(true)}/>}
+      {user ? (handle ? `@${handle}` : 'My profile') : configured ? 'Sign in with X' : 'Sign in unavailable'} {user ? <ChevronDown size={15}/> : <ArrowUpRight size={15}/>}
+    </button>
+    {user && menuOpen && <div className="x-auth-menu" role="menu">
+      <div className="x-auth-menu-profile"><strong>{user.user_metadata?.name || user.user_metadata?.full_name || (handle ? `@${handle}` : 'Wobblehead')}</strong>{handle && <span>@{handle}</span>}</div>
+      <button type="button" role="menuitem" onClick={signOut} disabled={busy}><LogOut size={15}/> {busy ? 'Signing out…' : 'Sign out'}</button>
+    </div>}
+  </div>;
 }
