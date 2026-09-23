@@ -39,7 +39,8 @@ export async function currentParticipant(create = false): Promise<Participant | 
 }
 
 export function isAdmin(userId: string | undefined | null) {
-  const ids = String((env as Cloudflare.Env & { ADMIN_USER_IDS?: string }).ADMIN_USER_IDS || '').split(',').map((id) => id.trim()).filter(Boolean);
+  const cloudflareIdList = (env as Cloudflare.Env & { ADMIN_USER_IDS?: string }).ADMIN_USER_IDS;
+  const ids = String(process.env.ADMIN_USER_IDS || cloudflareIdList || '').split(',').map((id) => id.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
   return !!userId && ids.includes(userId);
 }
 
