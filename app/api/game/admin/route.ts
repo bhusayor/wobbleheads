@@ -28,10 +28,11 @@ export async function GET(request: Request) {
     const date = new Date().toISOString().slice(0, 10);
     return new Response(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="wobbleheads-${exportTier.toLowerCase()}-claimed-${date}.csv"`, 'Cache-Control': 'private, no-store' } });
   }
-  const status = url.searchParams.get('status');
-  let query = context.admin.from('game_runs').select('id,user_id,game_version,mode,started_at,last_heartbeat_at,heartbeat_count,status,finished_at,validated_survival_time,suspicious_score,suspicious_flags,final_result,reward_reservations(id,tier,threshold_crossed_at,status,reservation_order,expires_at)').order('created_at', { ascending: false }).limit(100);
-  if (status && ['active', 'completed', 'invalid', 'review', 'abandoned'].includes(status)) query = query.eq('status', status);
-  const { data, error } = await query;
-  if (error) return gameError('Could not load game review data.', 500);
-  return gameJson({ runs: data });
+  const claimFields = 'user_id,wallet_address,x_handle,share_url,claimed_at';
+  const [gtdResult, fcfsResult] = await Promise.all([
+    context.admin.from('whitelist_eligibility').select(claimFields).eq('tier', 'GTD').eq('status', 'claimed').not('wallet_address', 'is', null).order('claimed_at', { ascending: true }),
+    context.admin.from('whitelist_eligibility').select(claimFields).eq('tier', 'FCFS').eq('status', 'claimed').not('wallet_address', 'is', null).order('claimed_at', { ascending: true }),
+  ]);
+  if (gtdResult.error || fcfsResult.error) return gameError('Could not load claimed wallets.', 500);
+  return gameJson({ gtd: gtdResult.data || [], fcfs: fcfsResult.data || [], generatedAt: new Date().toISOString() });
 }

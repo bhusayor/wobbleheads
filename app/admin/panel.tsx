@@ -1,52 +1,50 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { TASK_KEYS, XP } from '@/lib/site-config';
+import { ArrowDownToLine, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import '../dashboard.css';
 
-type Person = { id: string; display_name: string; email: string; x_username: string | null; wallet: string | null; xp: number; badge: string | null; wl_status: string; wl_category: string | null; suspicious: number };
-type Submission = { id: string; display_name: string; task_key: string; content: string; status: string; participant_id: string; note: string | null };
-type Referral = { referred_id: string; referrer_id: string; status: string };
-type Data = { participants: Person[]; submissions: Submission[]; referrals: Referral[]; settings: { key: string; value: string }[] };
-type History = { events: { event_key: string; xp: number; created_at: string }[]; submissions: { task_key: string; status: string }[] };
-const categories = ['Guaranteed WL', 'Raffle WL', 'Community WL'];
+type Claim = { user_id: string; wallet_address: string; x_handle: string | null; share_url: string | null; claimed_at: string };
+type ClaimData = { gtd: Claim[]; fcfs: Claim[]; generatedAt: string };
+
+function ClaimTable({ tier, claims }: { tier: 'GTD' | 'FCFS'; claims: Claim[] }) {
+  return <section className={`claim-panel claim-panel-${tier.toLowerCase()}`}>
+    <div className="claim-panel-head">
+      <div><span>{tier} ALLOCATION</span><h2>{tier} claimed wallets</h2><p>{claims.length.toLocaleString()} completed {tier} claims</p></div>
+      <a className="admin-export" href={`/api/game/admin?export=${tier}`}><ArrowDownToLine size={17}/> Export {tier}</a>
+    </div>
+    <div className="claim-table-wrap"><table>
+      <thead><tr><th>#</th><th>X username</th><th>X post</th><th>EVM wallet</th></tr></thead>
+      <tbody>{claims.length ? claims.map((claim, index) => <tr key={claim.user_id}>
+        <td>{String(index + 1).padStart(3, '0')}</td>
+        <td><strong>{claim.x_handle ? `@${claim.x_handle}` : 'Unavailable'}</strong></td>
+        <td>{claim.share_url ? <a href={claim.share_url} target="_blank" rel="noreferrer">View post <ArrowUpRight size={14}/></a> : <span>Unavailable</span>}</td>
+        <td><code>{claim.wallet_address}</code></td>
+      </tr>) : <tr><td colSpan={4}><div className="claim-empty">No completed {tier} claims yet.</div></td></tr>}</tbody>
+    </table></div>
+  </section>;
+}
 
 export default function AdminPanel() {
-  const [data, setData] = useState<Data | null>(null);
-  const [search, setSearch] = useState('');
-  const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Record<string, string>>({});
-  const [settingInputs, setSettingInputs] = useState<Record<string, string>>({});
-  const [histories, setHistories] = useState<Record<string, History>>({});
-  const refresh = useCallback(async (q = '') => {
-    const response = await fetch(`/api/admin?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
-    const body = await response.json() as Data & { error?: string };
-    if (response.ok) { setData(body); setSettingInputs(Object.fromEntries(body.settings.map((entry: { key: string; value: string }) => [entry.key, entry.value]))); }
-    else setMessage(body.error || 'Could not load admin data.');
+  const [data, setData] = useState<ClaimData | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    void fetch('/api/game/admin', { cache: 'no-store' }).then(async (response) => {
+      const body = await response.json() as ClaimData & { error?: string };
+      if (!response.ok) throw new Error(body.error || 'Could not load claims.');
+      if (active) setData(body);
+    }).catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : 'Could not load claims.'); });
+    return () => { active = false; };
   }, []);
-  useEffect(() => { queueMicrotask(() => void refresh()); }, [refresh]);
-  const update = async (payload: Record<string, unknown>) => {
-    setBusy(true);
-    try {
-      const response = await fetch('/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const body = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(body.error || 'Action failed.');
-      setMessage('Saved.'); await refresh(search);
-    } catch (cause) { setMessage(cause instanceof Error ? cause.message : 'Action failed.'); }
-    finally { setBusy(false); }
-  };
-  const value = (key: string) => settingInputs[key] || '';
-  const loadHistory = async (id: string) => {
-    if (histories[id]) return;
-    const response = await fetch(`/api/admin?history=${encodeURIComponent(id)}`);
-    if (response.ok) setHistories({ ...histories, [id]: await response.json() as History });
-  };
-  return <main className="dashboard"><header><Link href="/">← Wobbleheads</Link><div><span>PRIVATE CONTROL ROOM</span><h1>Wobbleheads admin</h1></div><Link href="/results">View results ↗</Link></header><div className="dash-summary"><div><strong>{data?.participants.length ?? '—'}</strong><span>Recent participants</span></div><div><strong>{data?.submissions.filter((item) => item.status === 'pending').length ?? '—'}</strong><span>Pending reviews</span></div><div><strong>{data?.participants.filter((item) => item.wl_status === 'approved').length ?? '—'}</strong><span>Approved winners</span></div></div>{message && <output className="dash-message">{message} <button onClick={() => setMessage('')} aria-label="Dismiss">×</button></output>}
-    <section><div className="dash-section-head"><h2>Participants</h2><form onSubmit={(event) => { event.preventDefault(); void refresh(search); }}><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search ID, name, email, wallet" aria-label="Search participants"/><button>Search</button></form></div><div className="dash-table-wrap"><table><thead><tr><th>Name / ID</th><th>Contact</th><th>XP</th><th>WL</th><th>Review</th></tr></thead><tbody>{data?.participants.map((person) => <tr key={person.id}><td><strong>{person.display_name}</strong><small>{person.id}</small>{person.suspicious ? <em>Flagged</em> : null}</td><td><small>{person.email}</small><small>{person.x_username ? `@${person.x_username}` : 'No X username'}</small><small>{person.wallet || 'No wallet'}</small></td><td><strong>{person.xp}</strong><button disabled={busy} onClick={() => { const amount = Number(prompt('Adjust XP by (negative to remove):')); if (amount) void update({ action: 'xp', id: person.id, amount }); }}>Adjust</button></td><td><strong>{person.wl_status}</strong><small>{person.wl_category || '—'}</small><select value={selectedCategory[person.id] || 'Guaranteed WL'} onChange={(event) => setSelectedCategory({ ...selectedCategory, [person.id]: event.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select><div className="dash-actions"><button disabled={busy || !person.wallet} onClick={() => update({ action: 'wl', id: person.id, status: 'approved', category: selectedCategory[person.id] || categories[0] })}>Approve</button><button disabled={busy} onClick={() => update({ action: 'wl', id: person.id, status: 'rejected' })}>Reject</button></div></td><td><button disabled={busy} onClick={() => update({ action: 'suspicious', id: person.id, flag: !person.suspicious })}>{person.suspicious ? 'Clear flag' : 'Flag activity'}</button><details><summary onClick={() => void loadHistory(person.id)}>Task history</summary>{histories[person.id] ? <div className="history-list">{histories[person.id].events.map((event, index) => <p key={index}>{event.event_key}: {event.xp >= 0 ? "+" : ""}{event.xp} XP</p>)}{histories[person.id].submissions.map((entry, index) => <p key={`s-${index}`}>{entry.task_key}: {entry.status}</p>)}</div> : <p>Loading…</p>}</details></td></tr>)}</tbody></table></div>{!data?.participants.length && <p>No participants found.</p>}</section>
-    <section><h2>Task submissions</h2><div className="dash-table-wrap"><table><thead><tr><th>Participant</th><th>Task</th><th>Proof</th><th>Status</th><th>Decision</th></tr></thead><tbody>{data?.submissions.map((item) => <tr key={item.id}><td>{item.display_name}<small>{item.participant_id}</small></td><td>{item.task_key}</td><td><span className="proof">{item.content}</span></td><td>{item.status}<small>{item.note}</small></td><td>{item.status === 'pending' && <div className="dash-actions"><button disabled={busy} onClick={() => update({ action: 'review', id: item.id, status: 'approved' })}>Approve</button><button disabled={busy} onClick={() => update({ action: 'review', id: item.id, status: 'rejected' })}>Reject</button></div>}</td></tr>)}</tbody></table></div>{!data?.submissions.length && <p>No submissions yet.</p>}</section>
-    <section><h2>Referrals</h2><div className="dash-table-wrap"><table><thead><tr><th>Referrer</th><th>Referred</th><th>Status</th><th>Decision</th></tr></thead><tbody>{data?.referrals.map((item) => <tr key={item.referred_id}><td>{item.referrer_id}</td><td>{item.referred_id}</td><td>{item.status}</td><td>{item.status === 'pending' && <div className="dash-actions"><button disabled={busy} onClick={() => update({ action: 'referral', id: item.referred_id, status: 'approved' })}>Approve</button><button disabled={busy} onClick={() => update({ action: 'referral', id: item.referred_id, status: 'rejected' })}>Reject</button></div>}</td></tr>)}</tbody></table></div></section>
-    <section><h2>Settings & publication</h2><div className="settings-grid">{[{ key: 'xUrl', title: 'Official X URL' }, { key: 'discordUrl', title: 'Official Discord URL' }, { key: 'wlThreshold', title: 'WL XP threshold' }, { key: 'mintDate', title: 'Mint date (YYYY-MM-DD)' }, { key: 'mintPrice', title: 'Mint price' }, { key: 'contractAddress', title: 'Contract address' }].map((item) => <label key={item.key}>{item.title}<div><input value={value(item.key)} onChange={(event) => setSettingInputs({ ...settingInputs, [item.key]: event.target.value })}/><button disabled={busy} onClick={() => update({ action: 'setting', key: item.key, value: value(item.key) })}>Save</button></div></label>)}<label>Blockchain<div><select value={value('blockchain') || 'evm'} onChange={(event) => setSettingInputs({ ...settingInputs, blockchain: event.target.value })}><option value="evm">EVM</option><option value="solana">Solana</option></select><button disabled={busy} onClick={() => update({ action: 'setting', key: 'blockchain', value: value('blockchain') || 'evm' })}>Save</button></div></label></div><h3>Quest rewards and availability</h3><div className="settings-grid">{Object.keys(XP).map((key) => <label key={key}>{key} XP<div><input type="number" min="0" max="100" value={settingInputs[`reward.${key}`] ?? XP[key as keyof typeof XP]} onChange={(event) => setSettingInputs({ ...settingInputs, [`reward.${key}`]: event.target.value })}/><button disabled={busy} onClick={() => update({ action: "setting", key: `reward.${key}`, value: settingInputs[`reward.${key}`] ?? XP[key as keyof typeof XP] })}>Save</button></div></label>)}{TASK_KEYS.map((key) => <label key={key}>{key} availability<div><select value={settingInputs[`task.${key}`] ?? "true"} onChange={(event) => setSettingInputs({ ...settingInputs, [`task.${key}`]: event.target.value })}><option value="true">Open</option><option value="false">Paused</option></select><button disabled={busy} onClick={() => update({ action: "setting", key: `task.${key}`, value: settingInputs[`task.${key}`] ?? "true" })}>Save</button></div></label>)}</div><h3>Claimed game wallets</h3><p>Download separate Excel-compatible files containing only users who completed the X post and wallet claim.</p><div className="publish-controls"><button type="button" onClick={() => { window.location.href = "/api/game/admin?export=GTD"; }}>Export GTD claims</button><button type="button" onClick={() => { window.location.href = "/api/game/admin?export=FCFS"; }}>Export FCFS claims</button></div><div className="publish-controls"><button disabled={busy} onClick={() => update({ action: 'setting', key: 'leaderboardLocked', value: value('leaderboardLocked') === 'true' ? 'false' : 'true' })}>{value('leaderboardLocked') === 'true' ? 'Unlock' : 'Lock'} leaderboard</button><button disabled={busy} onClick={() => update({ action: 'setting', key: 'resultsPublished', value: value('resultsPublished') === 'true' ? 'false' : 'true' })}>{value('resultsPublished') === 'true' ? 'Unpublish' : 'Publish'} WL results</button><button type="button" onClick={() => { window.location.href = "/api/admin?export=winners"; }}>Export winners CSV</button><button type="button" onClick={() => { window.location.href = "/api/admin?export=wallets"; }}>Export wallets CSV</button></div></section>
+
+  const total = (data?.gtd.length || 0) + (data?.fcfs.length || 0);
+  return <main className="claims-admin">
+    <header className="admin-topbar"><Link className="admin-brand" href="/"><span>W</span> WOBBLEHEADS.</Link><div className="admin-security"><ShieldCheck size={16}/> PRIVATE ADMIN</div></header>
+    <section className="admin-hero"><div><span>CLAIM OPERATIONS</span><h1>Whitelist dashboard</h1><p>Review completed game claims and export clean allocation lists for distribution.</p></div><div className="admin-live"><i></i> Live Supabase data</div></section>
+    <section className="admin-metrics"><article><span>TOTAL CLAIMED</span><strong>{data ? total.toLocaleString() : '—'}</strong><small>of 2,200 spots</small></article><article className="metric-gtd"><span>GTD CLAIMED</span><strong>{data ? data.gtd.length.toLocaleString() : '—'}</strong><small>of 700 spots</small></article><article className="metric-fcfs"><span>FCFS CLAIMED</span><strong>{data ? data.fcfs.length.toLocaleString() : '—'}</strong><small>of 1,500 spots</small></article></section>
+    {error && <div className="admin-error" role="alert">{error}</div>}
+    {data ? <div className="claim-panels"><ClaimTable tier="GTD" claims={data.gtd}/><ClaimTable tier="FCFS" claims={data.fcfs}/></div> : !error && <div className="admin-loading"><i></i><span>Loading claimed wallets…</span></div>}
   </main>;
 }
