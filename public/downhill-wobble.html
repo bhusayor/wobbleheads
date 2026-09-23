@@ -1460,14 +1460,27 @@ async function begin(){
 $("startBtn").onclick=begin;
 $("retry").onclick=begin;
 $("claim").onclick=async()=>{
+  // Mobile browsers only allow a new window while handling the original tap.
+  // Open it before the API request, then navigate it once the post is ready.
+  const shareWindow=window.open('about:blank','_blank');
+  if(shareWindow) shareWindow.opener=null;
+  claim.disabled=true;
   try{
     const prepared=await gameApi('share',{action:'prepare'});
-    window.open(prepared.intentUrl,'_blank','noopener,noreferrer');
     shareFlow.classList.remove('hidden');
     claimComplete.classList.add('hidden');
-    if(prepared.submitted){postStep.classList.add('hidden');walletStep.classList.remove('hidden');walletAddress.focus()}
-    else postUrl.focus();
-  }catch(error){showFeedback(error.message,"SHARE NOT READY")}
+    if(prepared.submitted){
+      if(shareWindow&&!shareWindow.closed) shareWindow.close();
+      postStep.classList.add('hidden');walletStep.classList.remove('hidden');walletAddress.focus();
+    }else{
+      if(shareWindow&&!shareWindow.closed) shareWindow.location.replace(prepared.intentUrl);
+      else window.location.assign(prepared.intentUrl);
+      postUrl.focus();
+    }
+  }catch(error){
+    if(shareWindow&&!shareWindow.closed) shareWindow.close();
+    showFeedback(error.message,"SHARE NOT READY");
+  }finally{claim.disabled=false}
 };
 $("verifyShare").onclick=async()=>{
   const submittedPostUrl=postUrl.value.trim();if(!submittedPostUrl){showFeedback('Paste the complete link to your X post before continuing.');return}
