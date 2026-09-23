@@ -56,7 +56,7 @@ export async function validateRun(admin: ReturnType<typeof createAdminClient>, r
     if (list[index].sequence <= list[index - 1].sequence || list[index].game_time < list[index - 1].game_time) flags.push('event_order');
     if (list[index].game_time - list[index - 1].game_time < 1 / MAX_JUMPS_PER_SECOND) flags.push('input_spam');
   }
-  const replayed = replaySurvival(run, list, survival);
+  const replayed = replaySurvival(run, list, survival, 60);
   if (replayed + .75 < survival) flags.push('replay_collision');
   return { valid: flags.length === 0 && Number(run.heartbeat_count) >= Math.floor(survival / 3), survival: Math.min(survival, replayed), flags };
 }

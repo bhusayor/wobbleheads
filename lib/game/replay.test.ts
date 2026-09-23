@@ -18,6 +18,13 @@ void test('the same seed and inputs always produce the same result', () => {
   assert.equal(replaySurvival(desktop, jumps, 45), replaySurvival(desktop, jumps, 45));
 });
 
+void test('replay supports common browser display rates', () => {
+  const jumps = Array.from({ length: 20 }, (_, index) => ({ sequence: index + 1, game_time: 1.7 + index * 2.1 }));
+  for (const hz of [30, 60, 90, 120, 144, 165, 240]) {
+    assert.ok(Number.isFinite(replaySurvival(desktop, jumps, 45, hz)));
+  }
+});
+
 void test('client supplied survival cannot override a replay collision', () => {
   assert.ok(replaySurvival(desktop, [], 60) < 60);
 });

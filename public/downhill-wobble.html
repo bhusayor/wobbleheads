@@ -696,14 +696,14 @@ const shareFlow=$("shareFlow"),postStep=$("postStep"),shareSpinner=$("shareSpinn
 
 let W=innerWidth, H=innerHeight;
 let audio=null, soundOn=true;
-let running=false, last=0, start=0, elapsed=0, raf=0;
+let running=false, last=0, elapsed=0, raf=0,simulationAccumulator=0;
 let speed=520, entities=[], particles=[];
 let jumpY=0, vy=0, onGround=true, rotation=0, spawnTimer=0, coinTimer=0, dustSpawn=0;
 let coins=0, bgScroll=0, jumpBuffer=0, tripleBoostUntil=0, tripleBoostAmount=0;
 let tripleGroupSeq=0, mobileClearedTripleGroups=new Set();
 
-const GAME_VERSION="wobble-1.0.0";
-let secureRun=null, heartbeatSequence=0, inputSequence=0, pendingInputs=[];
+const GAME_VERSION="wobble-1.1.0";
+let secureRun=null, heartbeatSequence=0, inputSequence=0, pendingInputs=[],lastAcceptedInputAt=-Infinity;
 let lastHeartbeatAt=0, thresholdSent={FCFS:false,GTD:false};
 let availability=null, gameRandom=Math.random, heartbeatInFlight=Promise.resolve(), gameAuthenticated=false;
 
@@ -1028,6 +1028,10 @@ function spawnCoinBonus(){
 
 function jump(){
   if(!running) return;
+  // Ignore a held key and unrealistically fast taps. They do not add a useful
+  // move, and recording them makes an otherwise valid run look like spam.
+  if(elapsed-lastAcceptedInputAt<.125) return;
+  lastAcceptedInputAt=elapsed;
   inputSequence++; pendingInputs.push({sequence:inputSequence,gameTime:Number(elapsed.toFixed(3)),type:"jump"});
 
   if(onGround){
@@ -1302,11 +1306,8 @@ async function finish(){
   }catch(error){resultTitle.innerHTML="CHECK<br>PENDING.";resultCopy.textContent=error.message||"Verification is temporarily unavailable."}
 }
 
-function loop(ts){
-  if(!running) return;
-  const dt = Math.min(.03, (ts-last)/1000);
-  last = ts;
-  elapsed = (ts-start)/1000;
+function simulate(dt){
+  elapsed += dt;
 
   const shownTime = elapsed.toFixed(1);
   timeEl.textContent = shownTime;
@@ -1375,8 +1376,19 @@ function loop(ts){
 
   updateParticles(dt);
 
-  if(updateEntities(dt, pr)){finish(); return;}
-  raf = requestAnimationFrame(loop);
+  if(updateEntities(dt, pr)){finish();return false}
+  return true;
+}
+
+function loop(ts){
+  if(!running) return;
+  simulationAccumulator+=Math.min(.1,(ts-last)/1000);
+  last=ts;
+  while(simulationAccumulator>=1/60&&running){
+    simulationAccumulator-=1/60;
+    if(!simulate(1/60)) return;
+  }
+  raf=requestAnimationFrame(loop);
 }
 
 async function begin(){
@@ -1387,7 +1399,7 @@ async function begin(){
   try{
     const started=await gameApi('start',{width:innerWidth,height:innerHeight,gameVersion:GAME_VERSION});
     secureRun=started; gameRandom=seededRandom(started.seed); applyAvailability(started.availability);
-    heartbeatSequence=0;inputSequence=0;pendingInputs=[];lastHeartbeatAt=0;thresholdSent={FCFS:false,GTD:false};heartbeatInFlight=Promise.resolve();
+    heartbeatSequence=0;inputSequence=0;pendingInputs=[];lastAcceptedInputAt=-Infinity;lastHeartbeatAt=0;thresholdSent={FCFS:false,GTD:false};heartbeatInFlight=Promise.resolve();
   }catch(error){alert(error.message+" Sign in with X on the homepage, then return to play.");button.disabled=false;return}
   button.disabled=false;
   audioInit();
@@ -1396,8 +1408,8 @@ async function begin(){
   startScreen.classList.add("hidden");
   resultScreen.classList.add("hidden");
   running=true;
-  start=performance.now();
-  last=start;
+  last=performance.now();
+  simulationAccumulator=0;
   raf=requestAnimationFrame(loop);
 }
 
@@ -1436,6 +1448,7 @@ $("sound").onclick=()=>{
 addEventListener("keydown",e=>{
   if(e.code==="Space"){
     e.preventDefault();
+    if(e.repeat) return;
     if(running) jump();
     else if(!resultScreen.classList.contains("hidden")) begin();
   }

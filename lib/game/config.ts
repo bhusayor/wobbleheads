@@ -1,4 +1,4 @@
-export const GAME_VERSION = 'wobble-1.0.0';
+export const GAME_VERSION = 'wobble-1.1.0';
 export const FCFS_THRESHOLD = 45;
 export const GTD_THRESHOLD = 60;
 export const HEARTBEAT_GRACE_SECONDS = 8;

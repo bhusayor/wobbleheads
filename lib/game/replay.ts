@@ -15,7 +15,7 @@ function seededRandom(seed: string) {
   return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 }
 
-export function replaySurvival(run: Run, jumps: Jump[], until: number) {
+export function replaySurvival(run: Run, jumps: Jump[], until: number, stepHz = 240) {
   const random = seededRandom(run.seed); const width = run.viewport_width; const height = run.viewport_height;
   const mobile = run.mode === 'mobile_landscape'; const gravity = mobile ? 3450 : 4000;
   const jumpPower = mobile ? Math.sqrt(2 * gravity * Math.min(width, height) * .43) : 1580;
@@ -49,7 +49,7 @@ export function replaySurvival(run: Run, jumps: Jump[], until: number) {
     const clear = mobile ? clamp(speed * .34 + 150, 360, 520) : clamp(speed * .52 + 220, 560, 880);
     spawnTimer = Math.max(gap * (random() * .12 + .94), (span + clear) / Math.max(speed, 1));
   };
-  const dt = 1 / 240;
+  const dt = 1 / stepHz;
   while (time < until + .5) {
     while (jumps[jumpIndex] && jumps[jumpIndex].game_time <= time + dt / 2) { if (onGround) { onGround = false; vy = jumpPower; buffer = 0; } else buffer = .2; jumpIndex++; }
     buffer = Math.max(0, buffer - dt); vy -= gravity * dt; jumpY += vy * dt;
