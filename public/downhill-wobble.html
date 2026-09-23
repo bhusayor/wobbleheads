@@ -674,6 +674,10 @@ button.alt{background:#f5f0e7;color:#25231f;border:1.5px solid #25231f}
           <label for="walletAddress" style="display:block;font-size:10px;font-weight:900;letter-spacing:.08em;margin-bottom:7px">YOUR EVM WALLET</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="walletAddress" class="share-field" type="text" placeholder="0x…"><button id="submitWallet" type="button">Save wallet</button></div>
         </div>
+        <div id="claimComplete" class="hidden" aria-live="polite">
+          <strong id="claimCompleteTitle"></strong>
+          <p id="claimCompleteWallet"></p>
+        </div>
       </div>
     </div>
   </div>
@@ -718,6 +722,8 @@ const timeEl=$("time"), coinsEl=$("coins"), radarFill=$("radarFill"), radarNeedl
 const startScreen=$("startScreen"), resultScreen=$("resultScreen"), flash=$("flash");
 const resultTitle=$("resultTitle"), tier=$("tier"), resultCopy=$("resultCopy"), claim=$("claim");
 const shareFlow=$("shareFlow"),postStep=$("postStep"),shareSpinner=$("shareSpinner"),walletStep=$("walletStep");
+const postUrl=$("postUrl"),walletAddress=$("walletAddress"),submitWallet=$("submitWallet");
+const claimComplete=$("claimComplete"),claimCompleteTitle=$("claimCompleteTitle"),claimCompleteWallet=$("claimCompleteWallet");
 const feedbackModal=$("feedbackModal"),feedbackMessage=$("feedbackMessage"),verifyStatusText=$("verifyStatusText");
 
 function showFeedback(message,title="CHECK THAT AGAIN"){
@@ -1091,6 +1097,8 @@ function reset(){
   speedveil.classList.remove("fast");
   claim.classList.add("hidden");
   shareFlow.classList.add("hidden");postStep.classList.remove("hidden");shareSpinner.classList.add("hidden");walletStep.classList.add("hidden");
+  claimComplete.classList.add("hidden");postUrl.value="";walletAddress.value="";
+  $("verifyShare").disabled=false;submitWallet.disabled=false;
 }
 
 function updateBackground(dt){
@@ -1455,24 +1463,25 @@ $("claim").onclick=async()=>{
     const prepared=await gameApi('share',{action:'prepare'});
     window.open(prepared.intentUrl,'_blank','noopener,noreferrer');
     shareFlow.classList.remove('hidden');
-    if(prepared.submitted){postStep.classList.add('hidden');walletStep.classList.remove('hidden')}
-    else $("postUrl").focus();
+    claimComplete.classList.add('hidden');
+    if(prepared.submitted){postStep.classList.add('hidden');walletStep.classList.remove('hidden');walletAddress.focus()}
+    else postUrl.focus();
   }catch(error){showFeedback(error.message,"SHARE NOT READY")}
 };
 $("verifyShare").onclick=async()=>{
-  const postUrl=$("postUrl").value.trim();if(!postUrl){showFeedback('Paste the complete link to your X post before continuing.');return}
+  const submittedPostUrl=postUrl.value.trim();if(!submittedPostUrl){showFeedback('Paste the complete link to your X post before continuing.');return}
   postStep.classList.add('hidden');showVerifying('VERIFYING POST…');
   try{
-    await Promise.all([gameApi('share',{action:'submit',postUrl}),new Promise(resolve=>setTimeout(resolve,3000))]);
-    shareSpinner.classList.add('hidden');walletStep.classList.remove('hidden');$("walletAddress").focus();
+    await Promise.all([gameApi('share',{action:'submit',postUrl:submittedPostUrl}),new Promise(resolve=>setTimeout(resolve,3000))]);
+    shareSpinner.classList.add('hidden');walletStep.classList.remove('hidden');walletAddress.focus();
   }catch(error){shareSpinner.classList.add('hidden');postStep.classList.remove('hidden');showFeedback(error.message,"POST NOT VERIFIED")}
 };
-$("submitWallet").onclick=async()=>{
-  const wallet=$("walletAddress").value.trim();if(!wallet){showFeedback('Enter the EVM wallet where you want to receive your whitelist spot.');return}
+submitWallet.onclick=async()=>{
+  const wallet=walletAddress.value.trim();if(!wallet){showFeedback('Enter the EVM wallet where you want to receive your whitelist spot.');return}
   walletStep.classList.add('hidden');showVerifying('VERIFYING WALLET…');
   try{
     const [result]=await Promise.all([gameApi('claim',{wallet}),new Promise(resolve=>setTimeout(resolve,3000))]);
-    shareSpinner.classList.add('hidden');walletStep.classList.remove('hidden');walletStep.innerHTML='<strong>'+result.tier+' CLAIM COMPLETE</strong><p>'+result.wallet+'</p>';claim.classList.add('hidden')
+    shareSpinner.classList.add('hidden');claimCompleteTitle.textContent=result.tier+' CLAIM COMPLETE';claimCompleteWallet.textContent=result.wallet;claimComplete.classList.remove('hidden');claim.classList.add('hidden')
   }catch(error){shareSpinner.classList.add('hidden');walletStep.classList.remove('hidden');showFeedback(error.message,"WALLET NOT ACCEPTED")}
 };
 $("feedbackClose").onclick=hideFeedback;
