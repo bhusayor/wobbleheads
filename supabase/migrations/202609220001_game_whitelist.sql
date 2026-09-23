@@ -73,11 +73,24 @@ create table if not exists public.whitelist_eligibility (
   verified_at timestamptz not null,
   status text not null default 'verified' check (status in ('verified','claimed','revoked')),
   wallet_address text,
+  x_handle text,
+  x_avatar_url text,
+  share_url text,
+  share_post_id text,
+  share_status text not null default 'not_started' check (share_status in ('not_started','submitted')),
+  shared_at timestamptz,
   claimed_at timestamptz,
   created_at timestamptz not null default now()
 );
+alter table public.whitelist_eligibility add column if not exists x_handle text;
+alter table public.whitelist_eligibility add column if not exists x_avatar_url text;
+alter table public.whitelist_eligibility add column if not exists share_url text;
+alter table public.whitelist_eligibility add column if not exists share_post_id text;
+alter table public.whitelist_eligibility add column if not exists share_status text not null default 'not_started';
+alter table public.whitelist_eligibility add column if not exists shared_at timestamptz;
 create unique index if not exists whitelist_one_user on public.whitelist_eligibility(user_id) where status in ('verified','claimed');
 create unique index if not exists whitelist_one_wallet on public.whitelist_eligibility(lower(wallet_address)) where wallet_address is not null;
+create unique index if not exists whitelist_one_share_post on public.whitelist_eligibility(share_post_id) where share_post_id is not null;
 
 create table if not exists public.game_rate_limits (
   user_id uuid not null references auth.users(id) on delete cascade,

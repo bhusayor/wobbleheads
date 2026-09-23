@@ -646,7 +646,18 @@ button.alt{background:rgba(255,255,255,.11);color:#fff;border:1px solid rgba(255
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button id="retry">Run it back</button>
-        <button id="claim" class="alt hidden">Continue to WL</button>
+        <button id="claim" class="alt hidden">Share on X</button>
+      </div>
+      <div id="shareFlow" class="hidden" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.25);padding-top:15px">
+        <div id="postStep">
+          <label for="postUrl" style="display:block;font-size:10px;font-weight:900;letter-spacing:.08em;margin-bottom:7px">PASTE YOUR X POST LINK</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="postUrl" type="url" placeholder="https://x.com/yourname/status/…" style="min-width:250px;flex:1;padding:11px;border:1.5px solid #3a2f22"><button id="verifyShare" type="button">Submit post</button></div>
+        </div>
+        <div id="shareSpinner" class="hidden" style="padding:18px 0;font-weight:900">KEEPING IT WOBBLING… 🫨</div>
+        <div id="walletStep" class="hidden">
+          <label for="walletAddress" style="display:block;font-size:10px;font-weight:900;letter-spacing:.08em;margin-bottom:7px">YOUR EVM WALLET</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="walletAddress" type="text" placeholder="0x…" style="min-width:250px;flex:1;padding:11px;border:1.5px solid #3a2f22"><button id="submitWallet" type="button">Save wallet</button></div>
+        </div>
       </div>
     </div>
   </div>
@@ -681,6 +692,7 @@ const world=$("world"), world2=$("world2"), groundFlow=$("groundFlow"), speedvei
 const timeEl=$("time"), coinsEl=$("coins"), radarFill=$("radarFill"), radarNeedle=$("radarNeedle"), radarTime=$("radarTime"), msg=$("message"), warning=$("warning"), coinGoal=$("coinGoal");
 const startScreen=$("startScreen"), resultScreen=$("resultScreen"), flash=$("flash");
 const resultTitle=$("resultTitle"), tier=$("tier"), resultCopy=$("resultCopy"), claim=$("claim");
+const shareFlow=$("shareFlow"),postStep=$("postStep"),shareSpinner=$("shareSpinner"),walletStep=$("walletStep");
 
 let W=innerWidth, H=innerHeight;
 let audio=null, soundOn=true;
@@ -1040,6 +1052,7 @@ function reset(){
   coinGoal.classList.remove("good");
   speedveil.classList.remove("fast");
   claim.classList.add("hidden");
+  shareFlow.classList.add("hidden");postStep.classList.remove("hidden");shareSpinner.classList.add("hidden");walletStep.classList.add("hidden");
 }
 
 function updateBackground(dt){
@@ -1279,8 +1292,8 @@ async function finish(){
       resultTitle.innerHTML=verified.tier+".<br>YOU EARNED IT.";
       tier.textContent=verified.tier+" VERIFIED";
       tier.className=verified.tier.toLowerCase();
-      resultCopy.textContent="Server verification passed. Add your wallet to claim your "+verified.tier+" spot.";
-      claim.classList.remove("hidden"); sfx.tier();
+      resultCopy.textContent="Server verification passed. Share your result on X, paste the post link, then add your EVM wallet.";
+      claim.textContent="Share on X";claim.classList.remove("hidden"); sfx.tier();
     }else{
       resultTitle.innerHTML="RUN NOT<br>VERIFIED.";
       tier.textContent="NO WL — YET"; tier.className="none";
@@ -1391,8 +1404,26 @@ async function begin(){
 $("startBtn").onclick=begin;
 $("retry").onclick=begin;
 $("claim").onclick=async()=>{
-  const wallet=prompt("Paste your EVM or Solana wallet address:"); if(!wallet) return;
-  try{const result=await gameApi('claim',{wallet});alert(result.tier+" whitelist spot claimed for "+result.wallet)}catch(error){alert(error.message)}
+  try{
+    const prepared=await gameApi('share',{action:'prepare'});
+    window.open(prepared.intentUrl,'_blank','noopener,noreferrer');
+    shareFlow.classList.remove('hidden');
+    if(prepared.submitted){postStep.classList.add('hidden');walletStep.classList.remove('hidden')}
+    else $("postUrl").focus();
+  }catch(error){alert(error.message)}
+};
+$("verifyShare").onclick=async()=>{
+  const postUrl=$("postUrl").value.trim();if(!postUrl){alert('Paste your X post link first.');return}
+  postStep.classList.add('hidden');shareSpinner.classList.remove('hidden');
+  try{
+    await Promise.all([gameApi('share',{action:'submit',postUrl}),new Promise(resolve=>setTimeout(resolve,3000))]);
+    shareSpinner.classList.add('hidden');walletStep.classList.remove('hidden');$("walletAddress").focus();
+  }catch(error){shareSpinner.classList.add('hidden');postStep.classList.remove('hidden');alert(error.message)}
+};
+$("submitWallet").onclick=async()=>{
+  const wallet=$("walletAddress").value.trim();if(!wallet){alert('Enter your EVM wallet.');return}
+  try{const result=await gameApi('claim',{wallet});walletStep.innerHTML='<strong>'+result.tier+' CLAIM COMPLETE</strong><p>'+result.wallet+'</p>';claim.classList.add('hidden')}
+  catch(error){alert(error.message)}
 };
 void gameApi('availability').then(applyAvailability).catch(()=>{});
 void checkGameAuth();
