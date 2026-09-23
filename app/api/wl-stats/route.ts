@@ -24,12 +24,16 @@ export async function GET() {
       stats = { uniquePlayers: unique.size, challengeAttempts: count || 0, availability };
       statsError = null;
     }
-    const availability = stats.availability;
+    const [{ count: gtdClaimed, error: gtdError }, { count: fcfsClaimed, error: fcfsError }] = await Promise.all([
+      admin.from('whitelist_eligibility').select('id', { count: 'exact', head: true }).eq('tier', 'GTD').eq('status', 'claimed').not('wallet_address', 'is', null),
+      admin.from('whitelist_eligibility').select('id', { count: 'exact', head: true }).eq('tier', 'FCFS').eq('status', 'claimed').not('wallet_address', 'is', null),
+    ]);
+    if (gtdError || fcfsError) throw gtdError || fcfsError;
     return json(deriveWobbleWLStats({
       uniquePlayers: Number(stats.uniquePlayers || 0),
       challengeAttempts: Number(stats.challengeAttempts || 0),
-      gtdClaimed: Number(availability.GTD.capacity - availability.GTD.remaining),
-      fcfsClaimed: Number(availability.FCFS.capacity - availability.FCFS.remaining),
+      gtdClaimed: gtdClaimed || 0,
+      fcfsClaimed: fcfsClaimed || 0,
     }));
   } catch (cause) {
     return error(cause instanceof Error ? cause.message : 'Live WL numbers are temporarily unavailable.', 500);
