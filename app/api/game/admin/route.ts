@@ -1,11 +1,17 @@
-import { gameContext, gameError, gameJson } from '@/lib/game/server';
+import { gameContext, gameError, gameJson, validRequestOrigin } from '@/lib/game/server';
 
 export const runtime = 'nodejs';
-export async function GET(request: Request) {
+
+async function adminContext() {
   const context = await gameContext();
-  if (!context) return gameError('Authentication required.', 401);
+  if (!context) return null;
   const admins = (process.env.ADMIN_USER_IDS || '').split(',').map((id) => id.trim()).filter(Boolean);
-  if (!admins.includes(context.user.id)) return gameError('Admin access required.', 403);
+  return admins.includes(context.user.id) ? context : null;
+}
+
+export async function GET(request: Request) {
+  const context = await adminContext();
+  if (!context) return gameError('Admin access required.', 403);
   const url = new URL(request.url);
   const exportTier = url.searchParams.get('export')?.toUpperCase();
   if (exportTier === 'GTD' || exportTier === 'FCFS') {
@@ -35,4 +41,25 @@ export async function GET(request: Request) {
   ]);
   if (gtdResult.error || fcfsResult.error) return gameError('Could not load claimed wallets.', 500);
   return gameJson({ gtd: gtdResult.data || [], fcfs: fcfsResult.data || [], generatedAt: new Date().toISOString() });
+}
+
+export async function POST(request: Request) {
+  if (!validRequestOrigin(request)) return gameError('Invalid request origin.', 403);
+  const context = await adminContext();
+  if (!context) return gameError('Admin access required.', 403);
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return gameError('Invalid request.'); }
+  if (body.action !== 'reset-live-data' || body.confirmation !== 'RESET') return gameError('Type RESET to confirm the live data reset.', 400);
+
+  const emptyUuid = '00000000-0000-0000-0000-000000000000';
+  const eligibility = await context.admin.from('whitelist_eligibility').delete().neq('id', emptyUuid);
+  if (eligibility.error) return gameError('Could not clear whitelist claims.', 500);
+  const runs = await context.admin.from('game_runs').delete().neq('id', emptyUuid);
+  if (runs.error) return gameError('Could not clear game runs.', 500);
+  const limits = await context.admin.from('game_rate_limits').delete().neq('user_id', emptyUuid);
+  if (limits.error) return gameError('Could not clear game rate limits.', 500);
+  const pools = await context.admin.from('reward_pools').update({ confirmed_count: 0, updated_at: new Date().toISOString() }).in('tier', ['GTD', 'FCFS']);
+  if (pools.error) return gameError('Game data was cleared, but allocation counters could not be reset.', 500);
+
+  return gameJson({ status: 'reset', gtd: [], fcfs: [], generatedAt: new Date().toISOString() });
 }
