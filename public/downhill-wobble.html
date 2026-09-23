@@ -61,6 +61,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111;font-f
   #radarNeedle{width:9px!important;height:9px!important}
   #jumpHint{right:8px!important;left:auto!important;bottom:34px!important;font-size:6px!important;padding:4px 6px!important}
   #sound{right:8px!important;bottom:3px!important;font-size:6px!important;padding:4px 6px!important}
+  .home-link{left:8px!important;bottom:3px!important;padding:5px 7px!important;font-size:6px!important;box-shadow:2px 2px 0 #fa6b44!important}
   .screen{align-items:center!important;padding:4px 8px!important}
   .panel{width:min(88vw,760px)!important;max-height:calc(100dvh - 8px)!important;padding:10px 16px!important;border-radius:14px!important}
   .hero{grid-template-columns:minmax(0,1fr) 55px!important;gap:8px!important}
@@ -186,6 +187,8 @@ button.alt{background:#f5f0e7;color:#25231f;border:1.5px solid #25231f}
 .feedback-card{width:min(460px,92vw);background:#f5f0e7;color:#25231f;border:1.5px solid #25231f;border-radius:3px;padding:25px;box-shadow:10px 10px 0 #fa6b44}
 .feedback-mark{width:42px;height:42px;display:grid;place-items:center;background:#f8d666;border:1.5px solid #25231f;font-size:24px;font-weight:1000;transform:rotate(-4deg)}
 .feedback-card h3{font-size:28px;line-height:1;margin:17px 0 10px}.feedback-card p{margin:0 0 22px;line-height:1.5;font-weight:700;color:#514d47}.feedback-card button{width:100%}
+.home-link{position:absolute;left:18px;bottom:18px;z-index:60;display:inline-flex;align-items:center;gap:8px;padding:11px 14px;background:#f5f0e7;color:#25231f;border:1.5px solid #25231f;border-radius:3px;box-shadow:4px 4px 0 #fa6b44;font-size:11px;font-weight:1000;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;transition:transform .2s,box-shadow .2s}
+.home-link:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 #fa6b44}
 .hidden{display:none!important}
 #tier{display:inline-block;border-radius:14px;padding:10px 14px;margin-top:10px;font-size:clamp(23px,4vw,40px);font-weight:1000;letter-spacing:-.05em}
 #tier.none{background:rgba(255,255,255,.1)}
@@ -624,6 +627,7 @@ button.alt{background:#f5f0e7;color:#25231f;border:1.5px solid #25231f}
   </div>
 
   <button id="sound">SOUND: ON</button>
+  <a class="home-link" href="/" aria-label="Return to the Wobbleheads homepage">← Homepage</a>
 
   <div class="screen" id="startScreen">
     <div class="panel">
@@ -1487,7 +1491,7 @@ addEventListener("keydown",e=>{
   }
 });
 addEventListener("pointerdown",e=>{
-  if(e.target.closest("button")) return;
+  if(e.target.closest("button,a")) return;
   if(running) jump();
 });
 
