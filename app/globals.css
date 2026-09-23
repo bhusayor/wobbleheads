@@ -31,3 +31,4 @@ body{font-family:'DM Sans',sans-serif}.intro-copy h1,.world-section h2,.hunt-ban
 @media(max-width:540px){.mint-links{display:grid;align-items:start}.chapter-grid{grid-template-columns:1fr!important}.chapter-grid>div:last-child{grid-column:auto}.chapter-grid>div{min-height:0}.post-mint-story{margin-top:38px}.post-mint-beats{gap:18px}}
 
 .x-auth-button{background:transparent;color:inherit}.x-auth-button:disabled{cursor:wait;opacity:.65}.x-auth-avatar{width:25px;height:25px;border-radius:50%;object-fit:cover;border:1px solid var(--ink);flex:0 0 auto}
+.wl-activity-counts{display:grid;grid-template-columns:1fr 1fr;gap:18px}.wl-activity-counts>div+div{border-left:1px solid var(--line);padding-left:18px}.wl-activity-counts strong{font-size:clamp(34px,3.4vw,52px)}

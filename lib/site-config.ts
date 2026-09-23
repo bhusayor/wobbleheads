@@ -9,7 +9,8 @@ export const FCFS_TOTAL = 1500;
 export const TOTAL_GAME_WL = GTD_TOTAL + FCFS_TOTAL;
 
 export type WobbleWLStats = {
-  playersAttempted: number;
+  uniquePlayers: number;
+  challengeAttempts: number;
   gtdClaimed: number;
   fcfsClaimed: number;
 };

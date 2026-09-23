@@ -116,6 +116,15 @@ returns jsonb language sql security definer set search_path=public as $$
   )) from reward_pools p;
 $$;
 
+create or replace function public.game_public_stats()
+returns jsonb language sql security definer set search_path=public as $$
+  select jsonb_build_object(
+    'uniquePlayers',(select count(distinct user_id) from game_runs),
+    'challengeAttempts',(select count(*) from game_runs),
+    'availability',game_availability()
+  );
+$$;
+
 create or replace function public.promote_reward_queue(p_tier text)
 returns void language plpgsql security definer set search_path=public as $$
 declare v_pool reward_pools%rowtype; v_used integer; v_next reward_reservations%rowtype; v_run game_runs%rowtype;
@@ -255,5 +264,7 @@ grant execute on function public.finalize_game_run(uuid,uuid,boolean,double prec
 revoke execute on function public.promote_reward_queue(text) from public,anon,authenticated;
 revoke execute on function public.expire_game_reservations() from public,anon,authenticated;
 revoke execute on function public.check_game_rate_limit(uuid,text,integer,integer) from public,anon,authenticated;
+revoke execute on function public.game_public_stats() from public,anon,authenticated;
 grant execute on function public.expire_game_reservations() to service_role;
 grant execute on function public.check_game_rate_limit(uuid,text,integer,integer) to service_role;
+grant execute on function public.game_public_stats() to service_role;
