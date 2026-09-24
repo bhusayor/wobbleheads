@@ -23,10 +23,10 @@ export async function POST(request: Request) {
   if (!handle) return gameError('Your X username is unavailable. Sign out and reconnect X.', 409);
   const gameRun = Array.isArray(eligibility.game_runs) ? eligibility.game_runs[0] : eligibility.game_runs;
   const seconds = Number(gameRun?.validated_survival_time || 0);
-  const { data: previousFcfs } = eligibility.tier === 'GTD'
-    ? await context.admin.from('reward_reservations').select('id,game_runs!inner(status,validated_survival_time)').eq('user_id', context.user.id).eq('tier', 'FCFS').eq('status', 'released').neq('run_id', eligibility.run_id).eq('game_runs.status', 'completed').gte('game_runs.validated_survival_time', 45).limit(1).maybeSingle()
+  const { data: upgradeState } = eligibility.tier === 'GTD'
+    ? await context.admin.from('whitelist_eligibility').select('upgraded_from_claimed_fcfs').eq('id', eligibility.id).eq('user_id', context.user.id).maybeSingle()
     : { data: null };
-  const isGtdUpgrade = eligibility.tier === 'GTD' && Boolean(previousFcfs);
+  const isGtdUpgrade = eligibility.tier === 'GTD' && upgradeState?.upgraded_from_claimed_fcfs === true;
 
   if (body.action === 'prepare') {
     const { error } = await context.admin.from('whitelist_eligibility').update({ x_handle: handle, x_avatar_url: avatar || null }).eq('id', eligibility.id).eq('user_id', context.user.id);

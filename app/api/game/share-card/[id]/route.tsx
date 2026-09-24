@@ -20,13 +20,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const admin = createAdminClient();
   const { data } = await admin.from('whitelist_eligibility').select('user_id,run_id,tier,x_handle,x_avatar_url,game_runs(validated_survival_time)').eq('id', id).in('status', ['verified', 'claimed']).maybeSingle();
   if (!data) return new Response('Not found', { status: 404 });
-  const [{ data: previousFcfs }, avatar] = await Promise.all([
-    data.tier === 'GTD' ? admin.from('reward_reservations').select('id,game_runs!inner(status,validated_survival_time)').eq('user_id', data.user_id).eq('tier', 'FCFS').eq('status', 'released').neq('run_id', data.run_id).eq('game_runs.status', 'completed').gte('game_runs.validated_survival_time', 45).limit(1).maybeSingle() : Promise.resolve({ data: null }),
+  const [{ data: upgradeState }, avatar] = await Promise.all([
+    data.tier === 'GTD' ? admin.from('whitelist_eligibility').select('upgraded_from_claimed_fcfs').eq('id', id).maybeSingle() : Promise.resolve({ data: null }),
     embeddedAvatar(data.x_avatar_url),
   ]);
   const run = Array.isArray(data.game_runs) ? data.game_runs[0] : data.game_runs;
   const seconds = Number(run?.validated_survival_time || 0).toFixed(1);
-  const isUpgrade = Boolean(previousFcfs);
+  const isUpgrade = upgradeState?.upgraded_from_claimed_fcfs === true;
   const accent = data.tier === 'GTD' ? '#f8d666' : '#b6d9ee';
   const wobblehead = `${new URL(request.url).origin}/images/wobble-bowtie.png`;
   const handle = data.x_handle || 'wobblehead';
