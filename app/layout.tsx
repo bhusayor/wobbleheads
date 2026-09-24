@@ -1,9 +1,28 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.wobbleheads.xyz';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: 'Wobbleheads — A little off. A lot alive.',
-  description: 'Build a Wobblehead from seven hand-sketched layers and follow the story toward the OpenSea mint.',
+  description: 'Meet 3,333 one-of-one Wobbleheads on Robinhood. Play Downhill Wobble, earn your place, and help bring the Heads to life.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    url: '/',
+    siteName: 'Wobbleheads',
+    title: 'Wobbleheads — A little off. A lot alive.',
+    description: '3,333 one-of-one Heads. One beautifully unbalanced world. Keep it wobbling.',
+    images: [{ url: '/social-card.png', width: 1200, height: 630, type: 'image/png', alt: 'Wobbleheads — A little off. A lot alive.' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@Wobbleheadds',
+    title: 'Wobbleheads — A little off. A lot alive.',
+    description: '3,333 one-of-one Heads. One beautifully unbalanced world. Keep it wobbling.',
+    images: ['/social-card.png'],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     if (error) return gameError('Could not prepare your share.', 500);
     const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
     const origin = new URL(request.url).hostname === 'localhost' ? new URL(request.url).origin : configuredOrigin || new URL(request.url).origin;
-    const shareUrl = `${origin}/wobble-win/${eligibility.id}`;
+    const shareUrl = `${origin}/wobble-win/${eligibility.id}?run=${eligibility.run_id}`;
     const text = isGtdUpgrade
       ? `WL SPOT UPGRADED: FCFS → GTD 🫨\n\nI kept wobbling for ${seconds.toFixed(1)} seconds and earned my GTD upgrade with @Wobbleheadds.\n\nThe wobble paid off. Think you can reach GTD?\n\n#KeepItWobbling`
       : `I KEPT IT WOBBLING 🫨\n\nI survived ${seconds.toFixed(1)} seconds and secured my ${eligibility.tier} spot with @Wobbleheadds.\n\nThink you can beat my time?\n\n#KeepItWobbling`;

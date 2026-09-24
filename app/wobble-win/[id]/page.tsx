@@ -7,7 +7,7 @@ type Props = { params: Promise<{ id: string }> };
 
 async function winner(id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const { data } = await createAdminClient().from('whitelist_eligibility').select('tier,x_handle,game_runs(validated_survival_time)').eq('id', id).in('status', ['verified', 'claimed']).maybeSingle();
+  const { data } = await createAdminClient().from('whitelist_eligibility').select('run_id,tier,x_handle,game_runs(validated_survival_time)').eq('id', id).in('status', ['verified', 'claimed']).maybeSingle();
   return data;
 }
 
@@ -16,10 +16,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!data) return { title: 'Verified Wobbleheads run' };
   const run = Array.isArray(data.game_runs) ? data.game_runs[0] : data.game_runs;
   const seconds = Number(run?.validated_survival_time || 0).toFixed(1);
-  const origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || '';
+  const origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'https://www.wobbleheads.xyz';
   const title = `@${data.x_handle} kept it wobbling for ${seconds}s`;
   const description = `A server-verified ${data.tier} Downhill Wobble run.`;
-  return { title, description, openGraph: { title, description, type: 'website', images: [{ url: `${origin}/api/game/share-card/${id}`, width: 1200, height: 630 }] }, twitter: { card: 'summary_large_image', title, description, images: [`${origin}/api/game/share-card/${id}`] } };
+  const pageUrl = `${origin}/wobble-win/${id}?run=${data.run_id}`;
+  const imageUrl = `${origin}/api/game/share-card/${id}?run=${data.run_id}`;
+  return { title, description, alternates: { canonical: pageUrl }, openGraph: { title, description, url: pageUrl, siteName: 'Wobbleheads', type: 'website', images: [{ url: imageUrl, width: 1200, height: 630, type: 'image/png', alt: `${data.tier} secured by @${data.x_handle} after ${seconds} seconds` }] }, twitter: { card: 'summary_large_image', site: '@Wobbleheadds', title, description, images: [imageUrl] } };
 }
 
 export default async function WobbleWin({ params }: Props) {
