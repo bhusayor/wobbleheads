@@ -1,5 +1,11 @@
 import { error, json } from '@/lib/server';
-import { deriveWobbleWLStats } from '@/lib/site-config';
+import {
+  COLLAB_FCFS_RESERVED,
+  COLLAB_GTD_RESERVED,
+  deriveWobbleWLStats,
+  PUBLIC_ATTEMPT_OFFSET,
+  PUBLIC_UNIQUE_PLAYER_OFFSET,
+} from '@/lib/site-config';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
@@ -30,10 +36,10 @@ export async function GET() {
     ]);
     if (gtdError || fcfsError) throw gtdError || fcfsError;
     return json(deriveWobbleWLStats({
-      uniquePlayers: Number(stats.uniquePlayers || 0),
-      challengeAttempts: Number(stats.challengeAttempts || 0),
-      gtdClaimed: gtdClaimed || 0,
-      fcfsClaimed: fcfsClaimed || 0,
+      uniquePlayers: Number(stats.uniquePlayers || 0) + PUBLIC_UNIQUE_PLAYER_OFFSET,
+      challengeAttempts: Number(stats.challengeAttempts || 0) + PUBLIC_ATTEMPT_OFFSET,
+      gtdClaimed: (gtdClaimed || 0) + COLLAB_GTD_RESERVED,
+      fcfsClaimed: (fcfsClaimed || 0) + COLLAB_FCFS_RESERVED,
     }));
   } catch (cause) {
     return error(cause instanceof Error ? cause.message : 'Live WL numbers are temporarily unavailable.', 500);

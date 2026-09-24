@@ -8,6 +8,13 @@ export const GTD_TOTAL = 700;
 export const FCFS_TOTAL = 1500;
 export const TOTAL_GAME_WL = GTD_TOTAL + FCFS_TOTAL;
 
+// Public allocation includes spots reserved for collaboration partners.
+// These offsets do not create claim records or appear in wallet exports.
+export const COLLAB_GTD_RESERVED = 91;
+export const COLLAB_FCFS_RESERVED = 201;
+export const PUBLIC_UNIQUE_PLAYER_OFFSET = 299;
+export const PUBLIC_ATTEMPT_OFFSET = 366;
+
 export type WobbleWLStats = {
   uniquePlayers: number;
   challengeAttempts: number;
